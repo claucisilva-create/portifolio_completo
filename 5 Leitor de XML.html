@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Leitor de XML de Nota Fiscal</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    table, th, td {
+      border: 1px solid #555;
+      border-collapse: collapse;
+      padding: 4px;
+    }
+    th {
+      background-color: #1f1f1f;
+      color: #fff;
+    }
+    input, button {
+      background-color: #1f1f1f;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 4px;
+      margin: 5px 0;
+    }
+    .section {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Leitor de XML de Nota Fiscal</h2>
+
+  <label>Chave de Acesso (44 dígitos):</label><br>
+  <input type="text" id="chaveAcesso" maxlength="44" style="width: 300px">
+  <button onclick="baixarXmlPorChave()">Baixar XML</button>
+  <br><br>
+
+  <input type="file" id="xmlFile" accept=".xml" multiple>
+  <button onclick="exportarParaExcel()">Exportar para Excel</button>
+
+  <div class="section">
+    <h3>Resumo</h3>
+    <p><strong>Fornecedor:</strong> <span id="fornecedor"></span></p>
+    <p><strong>CNPJ:</strong> <span id="cnpjFornecedor"></span></p>
+    <p><strong>NF:</strong> <span id="nfNumero"></span></p>
+    <p><strong>Data Emissão:</strong> <span id="dataEmissao"></span></p>
+    <p><strong>Valor Total XML:</strong> <span id="valorXml"></span></p>
+    <p><strong>Valor Calculado:</strong> <span id="valorCalculado"></span></p>
+    <p><strong>Valor Boletos:</strong> <span id="valorBoletos"></span></p>
+    <p><strong>Status:</strong> <span id="statusBoletos"></span></p>
+  </div>
+
+  <div class="section">
+    <h3>Filtrar Itens</h3>
+    <input type="text" oninput="filtrarTabela(this.value)" placeholder="Buscar produto...">
+  </div>
+
+  <div class="section">
+    <h3>Itens</h3>
+    <table id="tabelaXml">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Produto</th>
+          <th>Valor Unitário</th>
+          <th>Quantidade</th>
+          <th>Total</th>
+          <th>ICMS Unitário</th>
+          <th>ICMS Total</th>
+          <th>IPI Unitário</th>
+          <th>IPI Total</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Espelho</h3>
+    <table id="tabelaEspelho">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Cód. Barras</th>
+          <th>Nome no Sistema</th>
+          <th>Produto</th>
+          <th>Qtd</th>
+          <th>Valor Unitário</th>
+          <th>Total</th>
+          <th>ICMS Unitário</th>
+          <th>ICMS Total</th>
+          <th>IPI Unitário</th>
+          <th>IPI Total</th>
+          <th>Lote</th>
+          <th>Fabricação</th>
+          <th>Validade</th>
+          <th>NCM</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Boletos</h3>
+    <table id="tabelaBoletos">
+      <thead>
+        <tr>
+          <th>Vencimento</th>
+          <th>Valor</th>
+          <th>Banco</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    let nomeFornecedor = "";
+    let cnpjFornecedor = "";
+    let numeroNF = "";
+
+    document.getElementById('xmlFile').addEventListener('change', function () {
+      Array.from(this.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = () => carregarXml(reader.result);
+        reader.readAsText(file);
+      });
+    });
+
+    function baixarXmlPorChave() {
+      const chave = document.getElementById("chaveAcesso").value.trim();
+      if (!/^[0-9]{44}$/.test(chave)) return alert("Chave inválida.");
+      const url = `https://www.receitaws.com.br/nfe/${chave}/xml`;
+      fetch(url)
+        .then(res => res.ok ? res.text() : Promise.reject("Erro"))
+        .then(xml => carregarXml(xml))
+        .catch(err => alert("Erro: " + err));
+    }
+
+    function carregarXml(xmlString) {
+      const xml = new DOMParser().parseFromString(xmlString, "text/xml");
+      nomeFornecedor = xml.querySelector("emit xNome")?.textContent || "";
+      cnpjFornecedor = xml.querySelector("emit CNPJ")?.textContent || "";
+      numeroNF = xml.querySelector("ide nNF")?.textContent || "";
+      const dataEmissao = xml.querySelector("ide dhEmi")?.textContent || "";
+      const vNF = parseFloat(xml.querySelector("total ICMSTot vNF")?.textContent || 0);
+
+      document.getElementById("fornecedor").textContent = nomeFornecedor;
+      document.getElementById("cnpjFornecedor").textContent = cnpjFornecedor;
+      document.getElementById("nfNumero").textContent = numeroNF;
+      document.getElementById("dataEmissao").textContent = new Date(dataEmissao).toLocaleDateString("pt-BR");
+      document.getElementById("valorXml").textContent = vNF.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+      const tbodyXml = document.querySelector("#tabelaXml tbody");
+      const tbodyEspelho = document.querySelector("#tabelaEspelho tbody");
+      tbodyXml.innerHTML = tbodyEspelho.innerHTML = "";
+
+      let totalCalculado = 0;
+
+      xml.querySelectorAll("det").forEach(item => {
+        const cProd = item.querySelector("cProd")?.textContent || "";
+        const xProd = item.querySelector("xProd")?.textContent || "";
+        const vUnCom = parseFloat(item.querySelector("vUnCom")?.textContent || 0);
+        const qCom = Math.round(parseFloat(item.querySelector("qCom")?.textContent || 0));
+        const total = vUnCom * qCom;
+        totalCalculado += total;
+
+        const vICMS = parseFloat(item.querySelector("ICMS > * > vICMS")?.textContent || 0);
+        const vIPI = parseFloat(item.querySelector("IPI > IPITrib > vIPI")?.textContent || 0);
+
+        const icmsUnitario = vICMS / qCom || 0;
+        const ipiUnitario = vIPI / qCom || 0;
+
+        tbodyXml.innerHTML += `<tr>
+          <td>${cProd}</td>
+          <td>${xProd}</td>
+          <td>${vUnCom.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${qCom}</td>
+          <td>${total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${icmsUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${vICMS.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${ipiUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${vIPI.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+        </tr>`;
+
+        const cEAN = item.querySelector("cEAN")?.textContent || "";
+        const lote = item.querySelector("nLote")?.textContent || "";
+        const dFab = item.querySelector("dFab")?.textContent || "";
+        const dVal = item.querySelector("dVal")?.textContent || "";
+        const ncm = item.querySelector("NCM")?.textContent || "";
+
+        tbodyEspelho.innerHTML += `<tr>
+          <td>${cProd}</td>
+          <td><input value="${cEAN}" style="width: 130px;"></td>
+          <td><input value="" style="width: 150px;"></td>
+          <td>${xProd}</td>
+          <td>${qCom}</td>
+          <td>${vUnCom.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${icmsUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${vICMS.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${ipiUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td>${vIPI.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+          <td><input value="${lote}" style="width: 100px;"></td>
+          <td>${dFab ? new Date(dFab).toLocaleDateString("pt-BR") : ""}</td>
+          <td>${dVal ? new Date(dVal).toLocaleDateString("pt-BR") : ""}</td>
+          <td>${ncm}</td>
+        </tr>`;
+      });
+
+      document.getElementById("valorCalculado").textContent = totalCalculado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+      const tbodyBoletos = document.querySelector("#tabelaBoletos tbody");
+      tbodyBoletos.innerHTML = "";
+      let totalBoletos = 0;
+
+      xml.querySelectorAll("dup").forEach(dup => {
+        const venc = dup.querySelector("dVenc")?.textContent || "";
+        const valor = parseFloat(dup.querySelector("vDup")?.textContent || 0);
+        const banco = dup.querySelector("nDup")?.textContent || "";
+        totalBoletos += valor;
+
+        tbodyBoletos.innerHTML += `<tr><td>${venc}</td><td>${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td><td>${banco}</td></tr>`;
+      });
+
+      document.getElementById("valorBoletos").textContent = totalBoletos.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+      let status = totalBoletos === 0 ? "Sem boletos" : Math.abs(totalBoletos - vNF) < 0.01 ? "Boletos OK" : "Divergência nos valores";
+      document.getElementById("statusBoletos").textContent = status;
+    }
+
+    function exportarParaExcel() {
+      const wb = XLSX.utils.book_new();
+
+      const tabelas = ["tabelaXml", "tabelaEspelho", "tabelaBoletos"];
+      tabelas.forEach(id => {
+        const el = document.getElementById(id);
+        const clone = el.cloneNode(true);
+
+        clone.querySelectorAll("input").forEach(input => {
+          const td = input.parentElement;
+          td.textContent = input.value;
+        });
+
+        const ws = XLSX.utils.table_to_sheet(clone);
+        XLSX.utils.book_append_sheet(wb, ws, id);
+      });
+
+      XLSX.writeFile(wb, `NF_${numeroNF}_${cnpjFornecedor}.xlsx`);
+    }
+
+    function filtrarTabela(filtro) {
+      document.querySelectorAll("#tabelaXml tbody tr").forEach(linha => {
+        linha.style.display = linha.innerText.toLowerCase().includes(filtro.toLowerCase()) ? "" : "none";
+      });
+    }
+  </script>
+</body>
+</html>

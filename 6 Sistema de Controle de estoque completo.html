@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SGM — Suprema Dental Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --bg2: #111720;
+    --bg3: #161e29;
+    --surface: #1a2333;
+    --surface2: #1f2b3e;
+    --border: #2a3a52;
+    --border2: #334a66;
+    --accent: #00d4ff;
+    --accent2: #0099bb;
+    --green: #00e5a0;
+    --red: #ff4d6a;
+    --yellow: #ffc947;
+    --purple: #a78bfa;
+    --text: #e2eaf4;
+    --text2: #8ba0ba;
+    --text3: #4d6480;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius: 10px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{font-size:14px;scroll-behavior:smooth;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;}
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-track{background:var(--bg2);}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+  /* ── LOGIN ── */
+  #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:32px;}
+  .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 56px;width:360px;display:flex;flex-direction:column;gap:24px;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
+  .login-logo{display:flex;flex-direction:column;gap:4px;}
+  .login-logo span:first-child{font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--accent);letter-spacing:-1px;}
+  .login-logo span:last-child{font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;}
+  .login-card label{font-size:11px;font-weight:500;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;display:block;}
+  .login-card input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;color:var(--text);font-family:var(--font-mono);font-size:14px;outline:none;transition:border-color .2s;}
+  .login-card input:focus{border-color:var(--accent);}
+  .login-err{color:var(--red);font-size:12px;font-family:var(--font-mono);display:none;}
+  .btn-primary{background:var(--accent);color:var(--bg);font-family:var(--font-display);font-weight:700;font-size:14px;border:none;border-radius:var(--radius);padding:13px;cursor:pointer;transition:opacity .2s,transform .1s;letter-spacing:.5px;}
+  .btn-primary:hover{opacity:.88;}
+  .btn-primary:active{transform:scale(.98);}
+  .login-hint{font-family:var(--font-mono);font-size:11px;color:var(--text3);text-align:center;}
+
+  /* ── LAYOUT ── */
+  #app{display:none;height:100vh;overflow:hidden;}
+  .sidebar{width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:fixed;left:0;top:0;z-index:10;}
+  .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border);}
+  .sidebar-logo .brand{font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--accent);}
+  .sidebar-logo .brand-sub{font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:1px;}
+  .nav{flex:1;padding:12px 0;overflow-y:auto;}
+  .nav-section{padding:8px 16px 4px;font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;transition:background .15s,color .15s;font-size:13px;font-weight:500;color:var(--text2);border-left:3px solid transparent;}
+  .nav-item:hover{background:var(--surface);color:var(--text);}
+  .nav-item.active{background:var(--surface);color:var(--accent);border-left-color:var(--accent);}
+  .nav-item .icon{font-size:15px;width:20px;text-align:center;}
+  .sidebar-footer{padding:16px;border-top:1px solid var(--border);}
+  .btn-logout{display:flex;align-items:center;gap:8px;width:100%;background:none;border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text3);font-size:12px;cursor:pointer;transition:all .2s;font-family:var(--font-body);}
+  .btn-logout:hover{border-color:var(--red);color:var(--red);}
+  .main{margin-left:220px;height:100vh;overflow-y:auto;padding:28px 32px;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  /* ── HEADINGS ── */
+  .page-title{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px;}
+  .page-sub{font-size:12px;color:var(--text3);font-family:var(--font-mono);margin-bottom:24px;}
+
+  /* ── CARDS ── */
+  .cards-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-bottom:24px;}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:border-color .2s;}
+  .kpi-card:hover{border-color:var(--border2);}
+  .kpi-label{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;}
+  .kpi-value{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--text);line-height:1;}
+  .kpi-card.accent .kpi-value{color:var(--accent);}
+  .kpi-card.green .kpi-value{color:var(--green);}
+  .kpi-card.red .kpi-value{color:var(--red);}
+  .kpi-card.yellow .kpi-value{color:var(--yellow);}
+
+  /* ── TABLES ── */
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .table-toolbar{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .table-toolbar h3{font-family:var(--font-display);font-size:14px;font-weight:600;flex:1;min-width:120px;}
+  table{width:100%;border-collapse:collapse;}
+  thead th{background:var(--bg2);font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);}
+  tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:var(--surface2);}
+  tbody td{padding:9px 14px;font-size:13px;vertical-align:middle;}
+  .mono{font-family:var(--font-mono);font-size:12px;}
+
+  /* ── BADGES ── */
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--font-mono);}
+  .badge-green{background:rgba(0,229,160,.12);color:var(--green);border:1px solid rgba(0,229,160,.25);}
+  .badge-red{background:rgba(255,77,106,.12);color:var(--red);border:1px solid rgba(255,77,106,.25);}
+  .badge-yellow{background:rgba(255,201,71,.12);color:var(--yellow);border:1px solid rgba(255,201,71,.25);}
+  .badge-accent{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.25);}
+  .badge-purple{background:rgba(167,139,250,.12);color:var(--purple);border:1px solid rgba(167,139,250,.25);}
+  .badge-gray{background:rgba(77,100,128,.15);color:var(--text3);border:1px solid rgba(77,100,128,.25);}
+
+  /* ── INPUTS / BUTTONS ── */
+  input[type=text],input[type=number],input[type=date],select,textarea{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color .2s;width:100%;}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+  select option{background:var(--bg2);}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid transparent;font-family:var(--font-body);}
+  .btn-accent{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+  .btn-accent:hover{opacity:.85;}
+  .btn-outline{background:transparent;color:var(--text2);border-color:var(--border);}
+  .btn-outline:hover{border-color:var(--border2);color:var(--text);}
+  .btn-red{background:rgba(255,77,106,.15);color:var(--red);border-color:rgba(255,77,106,.3);}
+  .btn-red:hover{background:rgba(255,77,106,.25);}
+  .btn-green{background:rgba(0,229,160,.12);color:var(--green);border-color:rgba(0,229,160,.3);}
+  .btn-green:hover{background:rgba(0,229,160,.2);}
+  .btn-sm{padding:5px 11px;font-size:12px;}
+
+  /* ── FORMS ── */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-group{display:flex;flex-direction:column;gap:6px;}
+  .form-group label{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;}
+  .form-group.full{grid-column:1/-1;}
+
+  /* ── BIPE PANEL ── */
+  .bipe-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;}
+  .bipe-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .bipe-dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .bipe-title{font-family:var(--font-display);font-size:15px;font-weight:600;}
+  .bipe-inputs{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+  .bipe-inputs .form-group{flex:1;min-width:140px;}
+  .bipe-log{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;height:140px;overflow-y:auto;margin-top:14px;}
+  .bipe-log-item{font-family:var(--font-mono);font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:baseline;}
+  .bipe-log-item:last-child{border:none;}
+  .bipe-log-time{color:var(--text3);min-width:55px;}
+  .bipe-log-type{min-width:60px;}
+  .bipe-log-code{color:var(--accent);}
+
+  /* ── MODAL ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(4px);}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:32px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  .modal h3{font-family:var(--font-display);font-size:17px;font-weight:700;margin-bottom:6px;}
+  .modal p{font-size:13px;color:var(--text2);margin-bottom:20px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+
+  /* ── DECISÃO COMPRAS ── */
+  .dc-controls{display:flex;gap:12px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;}
+  .dc-controls .form-group{min-width:160px;}
+  .horizon-tabs{display:flex;gap:8px;margin-bottom:20px;}
+  .horizon-tab{padding:7px 18px;border-radius:20px;font-family:var(--font-mono);font-size:12px;cursor:pointer;border:1px solid var(--border);color:var(--text3);transition:all .15s;}
+  .horizon-tab.active{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600;}
+  .memoria-calc{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:var(--font-mono);font-size:11px;color:var(--text2);line-height:1.8;margin-top:10px;}
+  .memoria-calc .mc-title{color:var(--accent);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+
+  /* ── TAA ── */
+  .taa-status-ok{color:var(--green);}
+  .taa-status-warn{color:var(--yellow);}
+  .taa-status-exp{color:var(--red);}
+
+  /* ── SEARCH ── */
+  .search-wrap{position:relative;min-width:200px;}
+  .search-wrap input{padding-left:34px;}
+  .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none;}
+
+  /* ── FILE IMPORT ── */
+  .drop-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2);}
+  .drop-zone:hover{border-color:var(--accent);background:rgba(0,212,255,.04);}
+  .drop-zone .dz-icon{font-size:32px;margin-bottom:8px;}
+  .drop-zone p{font-size:13px;color:var(--text2);}
+  .drop-zone small{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
+
+  /* ── MISC ── */
+  .section{margin-bottom:24px;}
+  .divider{border:none;border-top:1px solid var(--border);margin:20px 0;}
+  .empty{text-align:center;padding:48px 20px;color:var(--text3);font-family:var(--font-mono);font-size:13px;}
+  .tag{font-family:var(--font-mono);font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--text3);}
+  .text-sm{font-size:12px;}
+  .text-mono{font-family:var(--font-mono);}
+  .gap{gap:10px;}
+  .flex{display:flex;}
+  .items-center{align-items:center;}
+  .wrap{flex-wrap:wrap;}
+  .mb-4{margin-bottom:4px;}
+  .notification{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:13px 18px;font-size:13px;z-index:9999;box-shadow:var(--shadow);transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px;}
+  .notification.show{transform:translateY(0);opacity:1;}
+  .notification.success{border-left:3px solid var(--green);}
+  .notification.error{border-left:3px solid var(--red);}
+  .notification.info{border-left:3px solid var(--accent);}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN ═══════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <span>SGM</span>
+      <span>Suprema Dental Management</span>
+    </div>
+    <div>
+      <label>Senha de Acesso</label>
+      <input type="password" id="login-pwd" placeholder="••••••••" autocomplete="off"/>
+    </div>
+    <p class="login-err" id="login-err">⚠ Senha incorreta.</p>
+    <button class="btn-primary" onclick="doLogin()">Entrar no Sistema</button>
+    <p class="login-hint">demo: <span style="color:var(--accent);font-family:var(--font-mono)">suprema2025</span></p>
+  </div>
+</div>
+
+<!-- ═══════════════ APP ═══════════════ -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="brand">SGM</div>
+      <div class="brand-sub">Dental Management</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Operação</div>
+      <div class="nav-item active" onclick="navTo('dash')"><span class="icon">📊</span>Dashboard</div>
+      <div class="nav-item" onclick="navTo('bipes')"><span class="icon">📡</span>Bipes</div>
+      <div class="nav-item" onclick="navTo('inventario')"><span class="icon">📦</span>Inventário</div>
+      <div class="nav-section">Análise</div>
+      <div class="nav-item" onclick="navTo('decisao')"><span class="icon">🧠</span>Decisão Compras</div>
+      <div class="nav-item" onclick="navTo('movs')"><span class="icon">📋</span>Movimentações</div>
+      <div class="nav-item" onclick="navTo('taa')"><span class="icon">⏱</span>Controle TAA</div>
+      <div class="nav-section">Gestão</div>
+      <div class="nav-item" onclick="navTo('importar')"><span class="icon">📥</span>Importar</div>
+      <div class="nav-item" onclick="navTo('exportar')"><span class="icon">📤</span>Exportar</div>
+      <div class="nav-item" onclick="navTo('configurar')"><span class="icon">⚙️</span>Configurar TAA</div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="resetarDados()" style="margin-bottom:8px;border-color:rgba(255,77,106,.3);color:var(--red)">🗑 Zerar todos os dados</button>
+      <button class="btn-logout" onclick="doLogout()">🔓 Sair do Sistema</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dash">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub" id="dash-sub">Visão geral do estoque</div>
+      <div class="cards-row" id="kpi-row"></div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <h3>📦 Resumo do Estoque</h3>
+        </div>
+        <table>
+          <thead><tr><th>Código</th><th>Descrição</th><th>Saldo</th><th>Giro</th><th>Último Inventário</th></tr></thead>
+          <tbody id="dash-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BIPES -->
+    <div class="page" id="page-bipes">
+      <div class="page-title">Sistema de Bipes</div>
+      <div class="page-sub">Registre entradas e saídas em tempo real</div>
+      <div class="bipe-panel">
+        <div class="bipe-header">
+          <div class="bipe-dot"></div>
+          <div class="bipe-title">Scanner Ativo</div>
+        </div>
+        <div class="bipe-inputs">
+          <div class="form-group">
+            <label>Tipo de Movimento</label>
+            <select id="bipe-tipo">
+              <option value="entrada">📦 Entrada</option>
+              <option value="saida">📤 Saída</option>
+              <option value="transf">🔄 Transferência</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:2">
+            <label>Código do Produto (bipar ou digitar + Enter)</label>
+            <input type="text" id="bipe-cod" placeholder="Ex: 001234" autofocus autocomplete="off"/>
+          </div>
+          <div class="form-group">
+            <label>Qtd</label>
+            <input type="number" id="bipe-qtd" value="1" min="1" style="width:90px"/>
+          </div>
+          <div class="form-group" style="flex:2">
+            <label>Observação (opcional)</label>
+            <input type="text" id="bipe-obs" placeholder="Dentista, paciente, sala..."/>
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button class="btn btn-accent" onclick="doBipe()">⚡ Bipar</button>
+          </div>
+        </div>
+        <div class="bipe-log" id="bipe-log">
+          <div style="color:var(--text3);font-family:var(--font-mono);font-size:11px;padding:8px 0;">Aguardando bipes...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTÁRIO -->
+    <div class="page" id="page-inventario">
+      <div class="page-title">Inventário</div>
+      <div class="page-sub">Consulte e filtre todo o cadastro de produtos</div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <h3>📦 Estoque Cadastrado</h3>
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="inv-search" placeholder="Buscar por código ou descrição..." oninput="renderInventario()"/>
+          </div>
+          <select id="inv-giro" onchange="renderInventario()" style="width:auto;min-width:140px">
+            <option value="">Todos os Giros</option>
+            <option value="alto">🔥 Giro Alto (>10)</option>
+            <option value="parado">❄️ Giro Parado (0)</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="navTo('importar')">+ Importar Excel</button>
+        </div>
+        <table>
+          <thead><tr><th>Código</th><th>Descrição</th><th>Saldo Real</th><th>Saídas/Mês</th><th>Giro</th><th>Inventário</th><th>Ações</th></tr></thead>
+          <tbody id="inv-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DECISÃO DE COMPRAS -->
+    <div class="page" id="page-decisao">
+      <div class="page-title">🧠 Assistente de Decisão de Compras</div>
+      <div class="page-sub">Projeção inteligente baseada em histórico de consumo</div>
+      <div class="dc-controls">
+        <div class="form-group">
+          <label>Horizonte de Planejamento</label>
+          <div class="horizon-tabs">
+            <div class="horizon-tab active" data-h="1" onclick="setHorizonte(1)">1 mês</div>
+            <div class="horizon-tab" data-h="3" onclick="setHorizonte(3)">3 meses</div>
+            <div class="horizon-tab" data-h="6" onclick="setHorizonte(6)">6 meses</div>
+            <div class="horizon-tab" data-h="12" onclick="setHorizonte(12)">12 meses</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Período Base da Média (lookback)</label>
+          <div class="horizon-tabs" id="periodo-tabs">
+            <div class="horizon-tab" data-p="1" onclick="setPeriodo(1)">1 mês</div>
+            <div class="horizon-tab" data-p="3" onclick="setPeriodo(3)">3 meses</div>
+            <div class="horizon-tab active" data-p="6" onclick="setPeriodo(6)">6 meses</div>
+            <div class="horizon-tab" data-p="12" onclick="setPeriodo(12)">12 meses</div>
+            <div class="horizon-tab" data-p="0" onclick="setPeriodo(0)">Todo histórico</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end;padding-bottom:4px;">
+          <button class="btn btn-accent" onclick="calcDecisao()">🧮 Calcular Recomendações</button>
+          <button class="btn btn-outline" onclick="exportDecisaoPDF()">📄 Exportar PDF</button>
+        </div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:16px;font-family:var(--font-mono);font-size:11px;color:var(--text3)" id="dc-periodo-info">
+        Selecione o período base e clique em Calcular.
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar"><h3>Recomendações de Compra</h3></div>
+        <table>
+          <thead><tr><th>Código</th><th>Descrição</th><th>Saldo Atual</th><th>Média/Mês</th><th>Necessidade</th><th>Sugestão de Compra</th><th>Memória</th></tr></thead>
+          <tbody id="dc-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MOVIMENTAÇÕES -->
+    <div class="page" id="page-movs">
+      <div class="page-title">Movimentações</div>
+      <div class="page-sub">Livro Razão completo de todos os bipes</div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <h3>📋 Ledger de Movimentações</h3>
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="mov-search" placeholder="Filtrar por código..." oninput="renderMovs()"/>
+          </div>
+          <select id="mov-tipo" onchange="renderMovs()" style="width:auto;min-width:140px">
+            <option value="">Todos os Tipos</option>
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+            <option value="transf">Transferência</option>
+          </select>
+        </div>
+        <table>
+          <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Código</th><th>Descrição</th><th>Qtd</th><th>Observação</th></tr></thead>
+          <tbody id="movs-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAA -->
+    <div class="page" id="page-taa">
+      <div class="page-title">⏱ Controle TAA</div>
+      <div class="page-sub">Tempo Após Abertura — auditoria de lacres rompidos</div>
+      <div class="table-wrap">
+        <div class="table-toolbar"><h3>🧪 Itens com Lacre Aberto</h3></div>
+        <table>
+          <thead><tr><th>Código</th><th>Descrição</th><th>Lote</th><th>Data Abertura</th><th>Venc. Interno</th><th>Dias Restantes</th><th>Status</th></tr></thead>
+          <tbody id="taa-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- IMPORTAR -->
+    <div class="page" id="page-importar">
+      <div class="page-title">Importar Dados</div>
+      <div class="page-sub">Carregue planilhas Excel para atualizar o sistema</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <h3 style="font-family:var(--font-display);margin-bottom:14px;font-size:15px;">📦 Importar Estoque</h3>
+          <p style="font-size:12px;color:var(--text3);margin-bottom:12px;font-family:var(--font-mono);">Colunas esperadas: Código | Descrição | Saldo Real</p>
+          <div class="drop-zone" onclick="document.getElementById('imp-estoque').click()">
+            <div class="dz-icon">📊</div>
+            <p>Clique para selecionar o arquivo</p>
+            <small>.xlsx · .xls · .csv</small>
+          </div>
+          <input type="file" id="imp-estoque" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEstoque(this)"/>
+        </div>
+        <div>
+          <h3 style="font-family:var(--font-display);margin-bottom:14px;font-size:15px;">📜 Importar Histórico Retroativo</h3>
+          <p style="font-size:12px;color:var(--text3);margin-bottom:12px;font-family:var(--font-mono);">Colunas: Código | Descrição | Data (DD/MM/YYYY) | Observação — cada linha = 1 bipe de saída</p>
+          <div class="drop-zone" onclick="document.getElementById('imp-hist').click()">
+            <div class="dz-icon">📈</div>
+            <p>Clique para selecionar o arquivo</p>
+            <small>.xlsx · .xls · .csv</small>
+          </div>
+          <input type="file" id="imp-hist" accept=".xlsx,.xls,.csv" style="display:none" onchange="importHistorico(this)"/>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <h3 style="font-family:var(--font-display);margin-bottom:14px;font-size:15px;">➕ Adicionar Produto Manualmente</h3>
+      <div class="form-grid" style="max-width:600px;">
+        <div class="form-group">
+          <label>Código</label>
+          <input type="text" id="add-cod" placeholder="Ex: 001234"/>
+        </div>
+        <div class="form-group">
+          <label>Saldo Real</label>
+          <input type="number" id="add-saldo" placeholder="0" min="0"/>
+        </div>
+        <div class="form-group full">
+          <label>Descrição</label>
+          <input type="text" id="add-desc" placeholder="Nome completo do produto"/>
+        </div>
+        <div class="form-group full">
+          <button class="btn btn-accent" onclick="addProdutoManual()">✅ Adicionar ao Estoque</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORTAR -->
+    <div class="page" id="page-exportar">
+      <div class="page-title">Exportar Dados</div>
+      <div class="page-sub">Gere relatórios em Excel e PDF</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
+        <div class="kpi-card" style="cursor:pointer" onclick="exportEstoqueXLSX()">
+          <div class="kpi-label">Excel</div>
+          <div style="font-size:32px;margin:8px 0;">📊</div>
+          <div style="font-size:14px;font-weight:600;">Estoque Atual</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">Exporta db_estoque completo</div>
+        </div>
+        <div class="kpi-card" style="cursor:pointer" onclick="exportMovsXLSX()">
+          <div class="kpi-label">Excel</div>
+          <div style="font-size:32px;margin:8px 0;">📋</div>
+          <div style="font-size:14px;font-weight:600;">Movimentações</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">Exporta ledger completo</div>
+        </div>
+        <div class="kpi-card" style="cursor:pointer" onclick="exportTAAXLSX()">
+          <div class="kpi-label">Excel</div>
+          <div style="font-size:32px;margin:8px 0;">⏱</div>
+          <div style="font-size:14px;font-weight:600;">Controle TAA</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">Exporta log de abertos</div>
+        </div>
+        <div class="kpi-card" style="cursor:pointer" onclick="exportDecisaoPDF()">
+          <div class="kpi-label">PDF</div>
+          <div style="font-size:32px;margin:8px 0;">📄</div>
+          <div style="font-size:14px;font-weight:600;">Relatório de Compras</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">Com memória de cálculo</div>
+        </div>
+        <div class="kpi-card" style="cursor:pointer" onclick="exportTAAPDF()">
+          <div class="kpi-label">PDF</div>
+          <div style="font-size:32px;margin:8px 0;">🧪</div>
+          <div style="font-size:14px;font-weight:600;">Auditoria TAA</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">Tabela de lacres abertos</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIGURAR TAA -->
+    <div class="page" id="page-configurar">
+      <div class="page-title">⚙️ Configurar TAA</div>
+      <div class="page-sub">Defina regras de Tempo Após Abertura para produtos químicos</div>
+      <div class="form-grid" style="max-width:640px;margin-bottom:20px;">
+        <div class="form-group">
+          <label>Código do Produto</label>
+          <input type="text" id="taa-cod" placeholder="Ex: 001234"/>
+        </div>
+        <div class="form-group">
+          <label>Dias de Validade Após Abertura</label>
+          <input type="number" id="taa-dias" placeholder="Ex: 30" min="1"/>
+        </div>
+        <div class="form-group full">
+          <label>Condições de Armazenamento</label>
+          <input type="text" id="taa-cond" placeholder="Ex: Refrigerado 2-8°C, Proteger da luz..."/>
+        </div>
+        <div class="form-group">
+          <label>Descrição (opcional)</label>
+          <input type="text" id="taa-desc" placeholder="Nome do produto"/>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn btn-accent" onclick="addTaaRegra()">✅ Salvar Regra</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar"><h3>📋 Regras Cadastradas</h3></div>
+        <table>
+          <thead><tr><th>Código</th><th>Descrição</th><th>Dias TAA</th><th>Condições</th><th>Ações</th></tr></thead>
+          <tbody id="taa-regras-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════ MODAL TAA ═══════════════ -->
+<div class="modal-overlay" id="modal-taa">
+  <div class="modal">
+    <h3>⏱ Controle de Abertura</h3>
+    <p id="modal-taa-desc">Este produto possui regra TAA. Informe os dados do lacre:</p>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Número do Lote</label>
+        <input type="text" id="modal-lote" placeholder="Ex: LOT2024001"/>
+      </div>
+      <div class="form-group">
+        <label>Data de Abertura</label>
+        <input type="date" id="modal-data-abertura"/>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModalTAA()">Cancelar</button>
+      <button class="btn btn-accent" onclick="confirmarTAA()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL EDIT ═══════════════ -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <h3>✏️ Editar Produto</h3>
+    <p>Altere os dados do item no estoque.</p>
+    <input type="hidden" id="edit-idx"/>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Código</label>
+        <input type="text" id="edit-cod"/>
+      </div>
+      <div class="form-group">
+        <label>Saldo Real</label>
+        <input type="number" id="edit-saldo" min="0"/>
+      </div>
+      <div class="form-group full">
+        <label>Descrição</label>
+        <input type="text" id="edit-desc"/>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModalEdit()">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveEditProd()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div class="notification" id="notif"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  DATA LAYER
+// ═══════════════════════════════════════════
+const SENHA = 'suprema2025';
+let db_estoque = [], movimentacoes = [], db_taa_regras = [], abertos = [];
+let horizonte = 1;
+let periodoBase = 6;
+let pendingBipeCod = null, pendingBipeTipo = null, pendingBipeQtd = 1, pendingBipeObs = '';
+let dcCache = [];
+
+function save() {
+  localStorage.setItem('sgm_estoque', JSON.stringify(db_estoque));
+  localStorage.setItem('sgm_movs', JSON.stringify(movimentacoes));
+  localStorage.setItem('sgm_taa', JSON.stringify(db_taa_regras));
+  localStorage.setItem('sgm_abertos', JSON.stringify(abertos));
+}
+
+function load() {
+  db_estoque = JSON.parse(localStorage.getItem('sgm_estoque') || '[]');
+  movimentacoes = JSON.parse(localStorage.getItem('sgm_movs') || '[]');
+  db_taa_regras = JSON.parse(localStorage.getItem('sgm_taa') || '[]');
+  abertos = JSON.parse(localStorage.getItem('sgm_abertos') || '[]');
+}
+
+
+// ═══════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════
+function doLogin() {
+  const v = document.getElementById('login-pwd').value;
+  if (v === SENHA) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    load();
+    refreshAll();
+    focusBipe();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+  }
+}
+
+function doLogout() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-pwd').value = '';
+}
+
+function resetarDados() {
+  if (!confirm('⚠️ Isso vai apagar TODOS os dados (estoque, movimentações, TAA e abertos). Tem certeza?')) return;
+  db_estoque = []; movimentacoes = []; db_taa_regras = []; abertos = [];
+  save(); refreshAll(); renderInventario(); renderMovs(); renderTAA(); renderTaaRegras();
+  notify('🗑 Todos os dados foram zerados.', 'info');
+}
+
+// ═══════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════
+function navTo(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => { if(n.getAttribute('onclick')?.includes("'"+id+"'")) n.classList.add('active'); });
+  if(id==='inventario') renderInventario();
+  if(id==='movs') renderMovs();
+  if(id==='taa') renderTAA();
+  if(id==='configurar') renderTaaRegras();
+  if(id==='dash') renderDash();
+  if(id==='bipes') { setTimeout(focusBipe,80); }
+}
+
+// ═══════════════════════════════════════════
+//  BIPES
+// ═══════════════════════════════════════════
+
+function doBipe() {
+  const cod = document.getElementById('bipe-cod').value.trim().toUpperCase();
+  const tipo = document.getElementById('bipe-tipo').value;
+  const qtd = parseInt(document.getElementById('bipe-qtd').value) || 1;
+  const obs = document.getElementById('bipe-obs').value.trim();
+  if (!cod) { focusBipe(); return; }
+
+  const idx = db_estoque.findIndex(i => i.codigo.toUpperCase() === cod);
+  if (idx === -1) { notify('❌ Código não encontrado: '+cod, 'error'); focusBipe(); return; }
+
+  // TAA check on saída
+  const taaRegra = db_taa_regras.find(r => r.codigo.toUpperCase() === cod);
+  if (tipo === 'saida' && taaRegra) {
+    pendingBipeCod = cod; pendingBipeTipo = tipo; pendingBipeQtd = qtd; pendingBipeObs = obs;
+    document.getElementById('modal-taa-desc').textContent = `"${db_estoque[idx].descricao}" — Informe os dados de abertura (TAA: ${taaRegra.dias} dias):`;
+    document.getElementById('modal-data-abertura').value = new Date().toISOString().slice(0,10);
+    document.getElementById('modal-lote').value = '';
+    document.getElementById('modal-taa').classList.add('open');
+    return;
+  }
+  commitBipe(cod, tipo, qtd, obs);
+}
+
+function commitBipe(cod, tipo, qtd, obs) {
+  const idx = db_estoque.findIndex(i => i.codigo.toUpperCase() === cod.toUpperCase());
+  if (idx === -1) return;
+  if (tipo === 'saida' || tipo === 'transf') {
+    db_estoque[idx].saldo_real = Math.max(0, db_estoque[idx].saldo_real - qtd);
+  } else {
+    db_estoque[idx].saldo_real += qtd;
+  }
+  movimentacoes.push({ data: new Date().toISOString(), tipo, codigo: db_estoque[idx].codigo, qtd, obs });
+  save();
+  logBipe(tipo, db_estoque[idx].codigo, db_estoque[idx].descricao, qtd);
+  notify(`✅ ${tipo.charAt(0).toUpperCase()+tipo.slice(1)}: ${db_estoque[idx].descricao} (x${qtd})`, 'success');
+  clearBipe();
+  renderDash();
+}
+
+function logBipe(tipo, cod, desc, qtd) {
+  const log = document.getElementById('bipe-log');
+  const now = new Date();
+  const time = now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const color = tipo==='entrada'?'var(--green)':tipo==='saida'?'var(--red)':'var(--yellow)';
+  const row = document.createElement('div');
+  row.className = 'bipe-log-item';
+  row.innerHTML = `<span class="bipe-log-time">${time}</span><span class="bipe-log-type" style="color:${color}">${tipo.toUpperCase()}</span><span class="bipe-log-code">${cod}</span><span style="color:var(--text2);flex:1">${desc}</span><span style="color:var(--text3)">x${qtd}</span>`;
+  log.prepend(row);
+  if (log.children.length > 40) log.lastChild.remove();
+}
+
+function clearBipe() {
+  document.getElementById('bipe-cod').value = '';
+  document.getElementById('bipe-qtd').value = 1;
+  document.getElementById('bipe-obs').value = '';
+  focusBipe();
+}
+
+function focusBipe() { document.getElementById('bipe-cod').focus(); }
+
+// ═══════════════════════════════════════════
+//  MODAL TAA
+// ═══════════════════════════════════════════
+function closeModalTAA() {
+  document.getElementById('modal-taa').classList.remove('open');
+  pendingBipeCod = null;
+  focusBipe();
+}
+
+function confirmarTAA() {
+  const lote = document.getElementById('modal-lote').value.trim();
+  const dataAbertura = document.getElementById('modal-data-abertura').value;
+  if (!lote || !dataAbertura) { notify('Preencha lote e data!', 'error'); return; }
+  const taaRegra = db_taa_regras.find(r => r.codigo.toUpperCase() === pendingBipeCod.toUpperCase());
+  const dtAb = new Date(dataAbertura + 'T00:00:00');
+  const vencInterno = new Date(dtAb.getTime() + taaRegra.dias * 86400000);
+  const idx = db_estoque.findIndex(i => i.codigo.toUpperCase() === pendingBipeCod.toUpperCase());
+  abertos.push({
+    codigo: db_estoque[idx].codigo,
+    descricao: db_estoque[idx].descricao,
+    lote,
+    data_abertura: dtAb.toISOString(),
+    venc_interno: vencInterno.toISOString(),
+    dias_taa: taaRegra.dias
+  });
+  save();
+  document.getElementById('modal-taa').classList.remove('open');
+  commitBipe(pendingBipeCod, pendingBipeTipo, pendingBipeQtd, pendingBipeObs);
+}
+
+// ═══════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════
+function renderDash() {
+  const hoje = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('dash-sub').textContent = `Atualizado em ${hoje} — ${db_estoque.length} produtos cadastrados`;
+  const total = db_estoque.reduce((s,i)=>s+i.saldo_real,0);
+  const saidas30 = movimentacoes.filter(m=>m.tipo==='saida'&&new Date(m.data)>=new Date(Date.now()-30*86400000)).length;
+  const zerados = db_estoque.filter(i=>i.saldo_real===0).length;
+  const abertosAtivos = abertos.filter(a=>{const venc=new Date(a.venc_interno);return venc>=new Date();}).length;
+  document.getElementById('kpi-row').innerHTML = `
+    <div class="kpi-card accent"><div class="kpi-label">Total em Estoque</div><div class="kpi-value">${total}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Produtos Cadastrados</div><div class="kpi-value">${db_estoque.length}</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Saídas (30 dias)</div><div class="kpi-value">${saidas30}</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Zerados</div><div class="kpi-value">${zerados}</div></div>
+    <div class="kpi-card yellow"><div class="kpi-label">TAA Ativos</div><div class="kpi-value">${abertosAtivos}</div></div>
+  `;
+  const tbody = document.getElementById('dash-table');
+  if (!db_estoque.length) { tbody.innerHTML='<tr><td colspan="5" class="empty">Nenhum produto cadastrado.</td></tr>'; return; }
+  const stats = getGiro();
+  tbody.innerHTML = db_estoque.map(item => {
+    const g = stats[item.codigo]||0;
+    const badge = g>10?`<span class="badge badge-red">🔥 Alto</span>`:g===0?`<span class="badge badge-gray">❄️ Parado</span>`:`<span class="badge badge-accent">↗ Normal</span>`;
+    const dt = item.data_inventario ? new Date(item.data_inventario).toLocaleDateString('pt-BR') : '—';
+    const saldoColor = item.saldo_real===0?'var(--red)':item.saldo_real<=3?'var(--yellow)':'var(--green)';
+    return `<tr><td class="mono">${item.codigo}</td><td>${item.descricao}</td><td style="color:${saldoColor};font-family:var(--font-mono);font-weight:600">${item.saldo_real}</td><td>${badge}</td><td class="mono text-sm">${dt}</td></tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+//  INVENTÁRIO
+// ═══════════════════════════════════════════
+function renderInventario() {
+  const q = document.getElementById('inv-search').value.trim();
+  const giroFilt = document.getElementById('inv-giro').value;
+  const stats = getGiro();
+  let lista = db_estoque.filter(item => {
+    if (q) {
+      const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i');
+      if (!rx.test(item.codigo) && !rx.test(item.descricao)) return false;
+    }
+    const g = stats[item.codigo]||0;
+    if (giroFilt==='alto' && g<=10) return false;
+    if (giroFilt==='parado' && g!==0) return false;
+    return true;
+  });
+  const tbody = document.getElementById('inv-table');
+  if (!lista.length) { tbody.innerHTML='<tr><td colspan="7" class="empty">Nenhum item encontrado.</td></tr>'; return; }
+  tbody.innerHTML = lista.map((item,i) => {
+    const g = stats[item.codigo]||0;
+    const mm = calcMM(item.codigo, 0);
+    const badge = g>10?`<span class="badge badge-red">🔥 Alto</span>`:g===0?`<span class="badge badge-gray">❄️ Parado</span>`:`<span class="badge badge-accent">↗ Normal</span>`;
+    const dt = item.data_inventario ? new Date(item.data_inventario).toLocaleDateString('pt-BR') : '—';
+    const saldoColor = item.saldo_real===0?'var(--red)':item.saldo_real<=3?'var(--yellow)':'var(--green)';
+    const realIdx = db_estoque.indexOf(item);
+    return `<tr>
+      <td class="mono">${item.codigo}</td>
+      <td>${item.descricao}</td>
+      <td style="color:${saldoColor};font-family:var(--font-mono);font-weight:600">${item.saldo_real}</td>
+      <td class="mono">${mm.toFixed(1)}</td>
+      <td>${badge}</td>
+      <td class="mono text-sm">${dt}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="openEditProd(${realIdx})">✏️</button> <button class="btn btn-red btn-sm" onclick="delProd(${realIdx})">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function openEditProd(idx) {
+  const item = db_estoque[idx];
+  document.getElementById('edit-idx').value = idx;
+  document.getElementById('edit-cod').value = item.codigo;
+  document.getElementById('edit-desc').value = item.descricao;
+  document.getElementById('edit-saldo').value = item.saldo_real;
+  document.getElementById('modal-edit').classList.add('open');
+}
+function closeModalEdit() { document.getElementById('modal-edit').classList.remove('open'); }
+function saveEditProd() {
+  const idx = parseInt(document.getElementById('edit-idx').value);
+  db_estoque[idx].codigo = document.getElementById('edit-cod').value.trim();
+  db_estoque[idx].descricao = document.getElementById('edit-desc').value.trim();
+  db_estoque[idx].saldo_real = parseInt(document.getElementById('edit-saldo').value)||0;
+  save(); closeModalEdit(); renderInventario(); renderDash();
+  notify('✅ Produto atualizado!','success');
+}
+function delProd(idx) {
+  if (!confirm('Remover este produto do estoque?')) return;
+  db_estoque.splice(idx,1); save(); renderInventario(); renderDash();
+  notify('🗑 Produto removido.','info');
+}
+
+// ═══════════════════════════════════════════
+//  MOVIMENTAÇÕES
+// ═══════════════════════════════════════════
+function renderMovs() {
+  const q = document.getElementById('mov-search').value.trim();
+  const tipo = document.getElementById('mov-tipo').value;
+  let lista = [...movimentacoes].reverse().filter(m => {
+    if (q && !m.codigo.toLowerCase().includes(q.toLowerCase())) return false;
+    if (tipo && m.tipo !== tipo) return false;
+    return true;
+  });
+  const tbody = document.getElementById('movs-table');
+  if (!lista.length) { tbody.innerHTML='<tr><td colspan="6" class="empty">Nenhuma movimentação.</td></tr>'; return; }
+  tbody.innerHTML = lista.slice(0,200).map(m => {
+    const dt = new Date(m.data).toLocaleString('pt-BR');
+    const item = db_estoque.find(i=>i.codigo===m.codigo);
+    const desc = item ? item.descricao : '—';
+    const badgeColor = m.tipo==='entrada'?'badge-green':m.tipo==='saida'?'badge-red':'badge-yellow';
+    const icon = m.tipo==='entrada'?'📦':m.tipo==='saida'?'📤':'🔄';
+    return `<tr>
+      <td class="mono text-sm">${dt}</td>
+      <td><span class="badge ${badgeColor}">${icon} ${m.tipo}</span></td>
+      <td class="mono">${m.codigo}</td>
+      <td style="font-size:12px">${desc}</td>
+      <td class="mono">${m.qtd||1}</td>
+      <td style="font-size:12px;color:var(--text3)">${m.obs||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+//  GIRO / MÉDIA MENSAL (cálculo central)
+// ═══════════════════════════════════════════
+function getGiro() {
+  const result = {};
+  movimentacoes.filter(m=>m.tipo==='saida').forEach(m=>{
+    result[m.codigo] = (result[m.codigo]||0) + (m.qtd||1);
+  });
+  return result;
+}
+
+function calcMM(codigo, pb) {
+  if (pb === undefined) pb = 0;
+  var corte = pb > 0 ? new Date(Date.now() - pb * 30.44 * 86400000) : null;
+  var saidas = movimentacoes.filter(function(m) {
+    if (m.tipo !== 'saida' || m.codigo !== codigo) return false;
+    if (corte) { var d = new Date(m.data); return !isNaN(d) && d >= corte; }
+    return true;
+  });
+  if (!saidas.length) return 0;
+  var tMeses;
+  if (pb > 0) {
+    tMeses = pb;
+  } else {
+    var datas = saidas.map(function(m){return new Date(m.data);}).filter(function(d){return !isNaN(d);});
+    var dInicio = new Date(Math.min.apply(null,datas));
+    tMeses = Math.max(1,(new Date()-dInicio)/(1000*60*60*24*30.44));
+  }
+  var total = saidas.reduce(function(s,m){return s+(m.qtd||1);},0);
+  return total / tMeses;
+}
+
+// DECISAO DE COMPRAS
+function setHorizonte(h) {
+  horizonte = h;
+  document.querySelectorAll('[data-h]').forEach(function(t){
+    t.classList.toggle('active', parseInt(t.dataset.h)===h);
+  });
+}
+
+function setPeriodo(p) {
+  periodoBase = p;
+  document.querySelectorAll('[data-p]').forEach(function(t){
+    t.classList.toggle('active', parseInt(t.dataset.p)===p);
+  });
+}
+
+function calcDecisao() {
+  var tbody = document.getElementById('dc-table');
+  var infoEl = document.getElementById('dc-periodo-info');
+  dcCache = [];
+  if (!db_estoque.length) { tbody.innerHTML='<tr><td colspan="7" class="empty">Sem produtos.</td></tr>'; return; }
+  var pbLabel = periodoBase === 0 ? 'todo o hist\u00f3rico' : ('últimos '+periodoBase+' mes(es)');
+  var corte = periodoBase > 0 ? new Date(Date.now() - periodoBase * 30.44 * 86400000) : null;
+  var corteStr = corte ? ' &nbsp;|&nbsp; Saídas a partir de: <strong>'+corte.toLocaleDateString('pt-BR')+'</strong>' : '';
+  infoEl.innerHTML = '📊 Base de cálculo: <strong style="color:var(--accent)">'+pbLabel+'</strong> &nbsp;|&nbsp; Horizonte: <strong style="color:var(--yellow)">'+horizonte+' mes(es)</strong>'+corteStr;
+  var rows = db_estoque.map(function(item) {
+    var mm = calcMM(item.codigo, periodoBase);
+    var N = mm * horizonte;
+    var C = Math.max(0, Math.ceil(N - item.saldo_real));
+    var saidas = movimentacoes.filter(function(m) {
+      if (m.tipo !== 'saida' || m.codigo !== item.codigo) return false;
+      if (corte) { var d = new Date(m.data); return !isNaN(d) && d >= corte; }
+      return true;
+    });
+    var stotal = saidas.reduce(function(s,m){return s+(m.qtd||1);},0);
+    var tLabel = periodoBase > 0 ? (periodoBase+' mes(es)') : 'histórico completo';
+    var memoria = 'Base: '+pbLabel+' | Saídas no período: '+stotal+' | T='+tLabel+' | M='+mm.toFixed(2)+'/mês | H='+horizonte+'m | N='+N.toFixed(1)+' | Saldo='+item.saldo_real+' → Comprar: '+C;
+    dcCache.push(Object.assign({},item,{mm:mm.toFixed(2),N:N.toFixed(1),C:C,memoria:memoria}));
+    var badge = C>0 ? '<span class="badge badge-red" style="font-size:13px;padding:5px 12px">🛒 '+C+'</span>' : '<span class="badge badge-green">✅ OK</span>';
+    return '<tr><td class="mono">'+item.codigo+'</td><td>'+item.descricao+'</td><td class="mono">'+item.saldo_real+'</td><td class="mono">'+mm.toFixed(2)+'</td><td class="mono">'+N.toFixed(1)+'</td><td>'+badge+'</td><td><span title="'+memoria+'" style="cursor:help;font-size:18px">🔍</span></td></tr>';
+  });
+  tbody.innerHTML = rows.join('');
+  notify('✅ Base: '+pbLabel+' | Horizonte: '+horizonte+' mes(es)','success');
+}
+
+// ═══════════════════════════════════════════
+//  TAA TABLE
+// ═══════════════════════════════════════════
+function renderTAA() {
+  const tbody = document.getElementById('taa-table');
+  if (!abertos.length) { tbody.innerHTML='<tr><td colspan="7" class="empty">Nenhum item com lacre aberto registrado.</td></tr>'; return; }
+  tbody.innerHTML = abertos.map((a,i) => {
+    const dtAb = new Date(a.data_abertura).toLocaleDateString('pt-BR');
+    const dtVenc = new Date(a.venc_interno).toLocaleDateString('pt-BR');
+    const hoje = new Date();
+    const diasRest = Math.ceil((new Date(a.venc_interno) - hoje) / 86400000);
+    let statusClass='', statusText='';
+    if (diasRest<0) { statusClass='taa-status-exp'; statusText='⛔ Vencido'; }
+    else if (diasRest<=5) { statusClass='taa-status-warn'; statusText='⚠️ Vence em breve'; }
+    else { statusClass='taa-status-ok'; statusText='✅ Válido'; }
+    return `<tr>
+      <td class="mono">${a.codigo}</td>
+      <td>${a.descricao}</td>
+      <td class="mono">${a.lote}</td>
+      <td class="mono">${dtAb}</td>
+      <td class="mono">${dtVenc}</td>
+      <td class="mono ${statusClass}">${diasRest<0?diasRest:'+'+diasRest} dias</td>
+      <td><span class="${statusClass}">${statusText}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+//  TAA REGRAS
+// ═══════════════════════════════════════════
+function addTaaRegra() {
+  const cod = document.getElementById('taa-cod').value.trim();
+  const dias = parseInt(document.getElementById('taa-dias').value);
+  const cond = document.getElementById('taa-cond').value.trim();
+  const desc = document.getElementById('taa-desc').value.trim();
+  if (!cod||!dias) { notify('Código e dias são obrigatórios!','error'); return; }
+  const existing = db_taa_regras.findIndex(r=>r.codigo===cod);
+  const regra = {codigo:cod,descricao:desc||cod,dias,condicoes:cond};
+  if (existing>=0) db_taa_regras[existing]=regra; else db_taa_regras.push(regra);
+  save(); renderTaaRegras();
+  document.getElementById('taa-cod').value=''; document.getElementById('taa-dias').value='';
+  document.getElementById('taa-cond').value=''; document.getElementById('taa-desc').value='';
+  notify('✅ Regra TAA salva!','success');
+}
+
+function renderTaaRegras() {
+  const tbody = document.getElementById('taa-regras-table');
+  if (!db_taa_regras.length) { tbody.innerHTML='<tr><td colspan="5" class="empty">Nenhuma regra cadastrada.</td></tr>'; return; }
+  tbody.innerHTML = db_taa_regras.map((r,i) =>
+    `<tr><td class="mono">${r.codigo}</td><td>${r.descricao}</td><td class="mono" style="color:var(--yellow)">${r.dias} dias</td><td style="font-size:12px;color:var(--text2)">${r.condicoes||'—'}</td><td><button class="btn btn-red btn-sm" onclick="delTaaRegra(${i})">🗑</button></td></tr>`
+  ).join('');
+}
+
+function delTaaRegra(i) {
+  db_taa_regras.splice(i,1); save(); renderTaaRegras();
+  notify('Regra removida.','info');
+}
+
+// ═══════════════════════════════════════════
+//  IMPORT
+// ═══════════════════════════════════════════
+function addProdutoManual() {
+  const cod = document.getElementById('add-cod').value.trim();
+  const desc = document.getElementById('add-desc').value.trim();
+  const saldo = parseInt(document.getElementById('add-saldo').value)||0;
+  if (!cod||!desc) { notify('Código e descrição obrigatórios!','error'); return; }
+  const existing = db_estoque.findIndex(i=>i.codigo===cod);
+  const item = {codigo:cod,descricao:desc,saldo_real:saldo,data_inventario:new Date().toISOString()};
+  if (existing>=0) db_estoque[existing]=item; else db_estoque.push(item);
+  save(); renderDash();
+  document.getElementById('add-cod').value=''; document.getElementById('add-desc').value=''; document.getElementById('add-saldo').value='';
+  notify('✅ Produto adicionado!','success');
+}
+
+function importEstoque(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      const normalizeH = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\s\u00a0\u200b\ufeff]+/g,'');
+      const header = rows[0].map(normalizeH);
+      const iCod = header.findIndex(h=>h.includes('codigo')||h.includes('cod'));
+      const iDesc = header.findIndex(h=>h.includes('descricao')||h.includes('desc')||h.includes('nome'));
+      const iSaldo = header.findIndex(h=>h.includes('saldo')||h.includes('qtd')||h.includes('quant'));
+      if (iCod<0||iDesc<0) { notify('Colunas não encontradas! Verifique os cabeçalhos: Código, Descrição, Saldo Real','error'); return; }
+      const novos = rows.slice(1).filter(r=>r[iCod]).map(r=>({
+        codigo: String(r[iCod]).trim().replace(/[\s\u00a0]+/g,''),
+        descricao: String(r[iDesc]).trim(),
+        saldo_real: iSaldo>=0?parseInt(r[iSaldo])||0:0,
+        data_inventario: new Date().toISOString()
+      }));
+      db_estoque = novos; save(); renderDash();
+      notify(`✅ ${novos.length} produtos importados!`,'success');
+    } catch(err) { notify('Erro ao ler arquivo: '+err.message,'error'); }
+    input.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function importHistorico(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result,{type:"array"});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+      if (rows.length < 2) { notify("Planilha vazia!","error"); return; }
+      const header = rows[0].map(h=>String(h).toLowerCase().trim());
+      const iCod  = header.findIndex(h=>h.includes("cod"));
+      const iData = header.findIndex(h=>h.includes("data"));
+      const iObs  = header.findIndex(h=>h.includes("obs"));
+      if (iCod < 0) { notify("Coluna Codigo nao encontrada!","error"); return; }
+      let count = 0;
+      rows.slice(1).forEach(r => {
+        const cod = String(r[iCod]||"").trim();
+        if (!cod) return;
+        let dt = new Date();
+        if (iData >= 0) {
+          const raw = String(r[iData]||"").trim();
+          if (raw.includes("/")) {
+            const [dd,mm,yyyy] = raw.split("/");
+            const parsed = new Date(yyyy+"-"+mm.padStart(2,"0")+"-"+dd.padStart(2,"0")+"T12:00:00");
+            if (!isNaN(parsed)) dt = parsed;
+          } else if (!isNaN(raw) && raw !== "") {
+            dt = new Date(Math.round((parseFloat(raw) - 25569) * 86400000));
+          } else {
+            const parsed = new Date(raw);
+            if (!isNaN(parsed)) dt = parsed;
+          }
+        }
+        movimentacoes.push({ data: dt.toISOString(), tipo: "saida", codigo: cod, qtd: 1, obs: iObs >= 0 ? String(r[iObs]||"").trim() : "Historico importado" });
+        count++;
+      });
+      save(); renderMovs();
+      notify("✅ "+count+" bipes importados como saidas!", "success");
+    } catch(err) { notify("Erro: "+err.message,"error"); }
+    input.value="";
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════
+function exportEstoqueXLSX() {
+  const data = db_estoque.map(i=>({Código:i.codigo,Descrição:i.descricao,'Saldo Real':i.saldo_real,'Data Inventário':i.data_inventario?new Date(i.data_inventario).toLocaleDateString('pt-BR'):''}));
+  xlsxDownload(data,'SGM_Estoque_'+today()+'.xlsx');
+  notify('📊 Excel exportado!','success');
+}
+
+function exportMovsXLSX() {
+  const data = movimentacoes.map(m=>({Data:new Date(m.data).toLocaleString('pt-BR'),Tipo:m.tipo,Código:m.codigo,Qtd:m.qtd||1,Observação:m.obs||''}));
+  xlsxDownload(data,'SGM_Movimentacoes_'+today()+'.xlsx');
+  notify('📋 Movimentações exportadas!','success');
+}
+
+function exportTAAXLSX() {
+  const data = abertos.map(a=>({Código:a.codigo,Descrição:a.descricao,Lote:a.lote,'Data Abertura':new Date(a.data_abertura).toLocaleDateString('pt-BR'),'Venc. Interno':new Date(a.venc_interno).toLocaleDateString('pt-BR')}));
+  xlsxDownload(data,'SGM_TAA_'+today()+'.xlsx');
+  notify('⏱ TAA exportado!','success');
+}
+
+function xlsxDownload(data, filename) {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb,ws,'Dados');
+  XLSX.writeFile(wb,filename);
+}
+
+function exportDecisaoPDF() {
+  if (!dcCache.length) calcDecisao();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape'});
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.text('SGM — Relatório de Decisão de Compras',14,16);
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(100);
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')} | Horizonte: ${horizonte} mes(es)`,14,23);
+  doc.setTextColor(0);
+  const rows = dcCache.map(r=>[r.codigo,r.descricao.substring(0,40),r.saldo_real,r.mm,r.N,r.C,r.C>0?'COMPRAR':'OK']);
+  doc.autoTable({
+    head:[['Código','Descrição','Saldo','M/Mês','Necessidade','Sugestão','Status']],
+    body:rows,
+    startY:28,
+    styles:{fontSize:8,font:'helvetica'},
+    headStyles:{fillColor:[0,180,220]},
+    didParseCell: data => {
+      if (data.column.index===6 && data.section==='body') {
+        data.cell.styles.textColor = data.cell.raw==='COMPRAR'?[220,53,69]:[40,167,69];
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
+  });
+  let y = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text('Memória de Cálculo',14,y); y+=6;
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(60);
+  dcCache.forEach(r=>{
+    if (y>185) { doc.addPage(); y=14; }
+    const lines = doc.splitTextToSize(`• ${r.codigo}: ${r.memoria}`,268);
+    doc.text(lines,14,y); y+=lines.length*4+2;
+  });
+  doc.save('SGM_Decisao_Compras_'+today()+'.pdf');
+  notify('📄 PDF exportado!','success');
+}
+
+function exportTAAPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('SGM — Auditoria TAA',14,15);
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(100);
+  doc.text('Gerado em: '+new Date().toLocaleString('pt-BR'),14,21);
+  doc.setTextColor(0);
+  if (!abertos.length) {
+    doc.setFontSize(11); doc.text('Nenhum item com lacre aberto.',14,35);
+  } else {
+    const hoje = new Date();
+    const rows = abertos.map(a=>{
+      const dias = Math.ceil((new Date(a.venc_interno)-hoje)/86400000);
+      return [a.codigo,a.descricao.substring(0,35),a.lote,new Date(a.data_abertura).toLocaleDateString('pt-BR'),new Date(a.venc_interno).toLocaleDateString('pt-BR'),dias<0?'VENCIDO':'+'+dias+' dias'];
+    });
+    doc.autoTable({head:[['Código','Descrição','Lote','Abertura','Venc. Interno','Restante']],body:rows,startY:25,styles:{fontSize:8}});
+  }
+  doc.save('SGM_Auditoria_TAA_'+today()+'.pdf');
+  notify('📄 PDF auditoria exportado!','success');
+}
+
+function today() { return new Date().toISOString().slice(0,10).replace(/-/g,''); }
+
+// ═══════════════════════════════════════════
+//  NOTIFICATION
+// ═══════════════════════════════════════════
+function notify(msg, type='info') {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.className = `notification ${type} show`;
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.remove('show'),3200);
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+function refreshAll() {
+  renderDash();
+}
+
+
+window.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('login-pwd').addEventListener('keypress', function(e){ if(e.key==='Enter') doLogin(); });
+  document.getElementById('bipe-cod').addEventListener('keypress', function(e){ if(e.key==='Enter') doBipe(); });
+  document.getElementById('bipe-obs').addEventListener('keypress', function(e){ if(e.key==='Enter') doBipe(); });
+});
+</script>
+</body>
+</html>

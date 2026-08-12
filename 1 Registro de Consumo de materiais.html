@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartStock Pro - Auditoria Técnica</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root { --primary: #1e3a8a; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #334155; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        
+        #importModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 15px; text-align: center; }
+        
+        /* Ajustado para acomodar os novos campos de peso na mesma linha */
+        .grid-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 15px; margin-top: 15px; }
+        input, select, button { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+        
+        button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-add { background: var(--success); }
+        .btn-export { background: #475569; margin-top: 10px; }
+        .btn-admin { background: #64748b; margin-top: 10px; font-size: 12px; }
+        
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .history-table th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .history-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+
+        .legend-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .legend-item { font-size: 11px; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        
+        #suggestions { position: absolute; width: 100%; z-index: 10; background: white; border: 1px solid #ddd; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .sugg-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .sugg-item:hover { background: #f1f5f9; }
+
+        /* Estilo para ocultar a área restrita */
+        #adminSection { display: none; }
+        
+        /* Modal de senha */
+        #passwordModal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1100; }
+    </style>
+</head>
+<body>
+
+<div id="importModal">
+    <div class="modal-content">
+        <h2>📊 Auditor de Consumo</h2>
+        <p>Importe sua base Excel para habilitar a inteligência de estoque.</p>
+        <input type="file" id="fileInput" accept=".xlsx, .xls">
+    </div>
+</div>
+
+<div id="passwordModal">
+    <div class="modal-content">
+        <h3>🔒 Acesso Restrito</h3>
+        <input type="password" id="adminPass" placeholder="Digite a senha" style="margin-bottom: 15px;">
+        <button onclick="confirmAdmin()">ENTRAR</button>
+        <button onclick="document.getElementById('passwordModal').style.display='none'" style="background:#666; margin-top:5px;">CANCELAR</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <h3>🔍 Registro de Consumo</h3>
+        <div style="position: relative;">
+            <input type="text" id="searchInput" placeholder="Digite o nome do produto..." autocomplete="off">
+            <div id="suggestions"></div>
+        </div>
+        
+        <div class="grid-inputs">
+            <div><label>Unidade</label>
+                <select id="unitSelect">
+                    <option value="Unidade 1">Unidade 1</option>
+                    <option value="Unidade 2">Unidade 2</option>
+                </select>
+            </div>
+            <div><label>Data de Abertura</label><input type="date" id="dateOpen"></div>
+            <div><label>Data de Entrega</label><input type="date" id="dateEnd"></div>
+            
+            <div><label>Peso Inicial (g)</label><input type="number" id="weightInitial" step="0.01" placeholder="Ex: 500"></div>
+            <div><label>Peso Final (g)</label><input type="number" id="weightFinal" step="0.01" placeholder="Ex: 125"></div>
+        </div>
+        <button class="btn-add" onclick="addToBatch()" style="margin-top: 15px;">ADICIONAR À AUDITORIA</button>
+        
+        <button class="btn-admin" id="unlockBtn" onclick="openAdminModal()">🔓 ACESSAR RELATÓRIOS (ADMIN)</button>
+    </div>
+
+    <div id="adminSection">
+        <div class="card">
+            <h3>📋 Relatório Consolidado</h3>
+            <table class="history-table" id="batchTable">
+                <thead>
+                    <tr>
+                        <th>Unidade</th>
+                        <th>Produto</th>
+                        <th>Status Técnico</th>
+                        <th>Recomendação</th>
+                        <th>Métricas</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            
+            <div class="legend-box">
+                <div class="legend-item" style="border-left: 4px solid var(--success)"><strong>ALTO GIRO:</strong> Consumo rápido e integral. O estoque está ideal.</div>
+                <div class="legend-item" style="border-left: 4px solid var(--warning)"><strong>REGULAR:</strong> Giro dentro do esperado. Monitorar constância.</div>
+                <div class="legend-item" style="border-left: 4px solid var(--danger)"><strong>SUBUTILIZAÇÃO:</strong> Descarte de item com conteúdo. Indica excesso de compra.</div>
+            </div>
+
+            <button class="btn-export" onclick="exportExcel()" style="width: 100%; margin-top: 20px; background: #15803d;">EXPORTAR RELATÓRIO EXCEL</button>
+            <button class="btn-export" onclick="exportPDF()" style="width: 100%; margin-top: 10px;">GERAR RELATÓRIO PDF EXPLICATIVO</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let products = [];
+    let selectedItem = null;
+    let batch = [];
+
+    // Funções de Senha Oculta
+    function openAdminModal() {
+        document.getElementById('passwordModal').style.display = 'flex';
+        document.getElementById('adminPass').focus();
+    }
+
+    function confirmAdmin() {
+        const pass = document.getElementById('adminPass').value;
+        if (pass === "Cl@86372") { 
+            document.getElementById('adminSection').style.display = 'block';
+            document.getElementById('unlockBtn').style.display = 'none';
+            document.getElementById('passwordModal').style.display = 'none';
+            alert("Acesso concedido!");
+        } else {
+            alert("Senha incorreta!");
+        }
+    }
+
+    // Importação
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const wb = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
+            const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            products = raw.map(i => ({ name: i['Nome'] || i['PRODUTO'] || Object.values(i)[1] || Object.values(i)[0] }));
+            document.getElementById('importModal').style.display = 'none';
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    // Busca
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const val = this.value.toLowerCase();
+        const sugg = document.getElementById('suggestions');
+        sugg.innerHTML = '';
+        if(val.length < 2) return sugg.style.display = 'none';
+        const filtered = products.filter(p => String(p.name).toLowerCase().includes(val)).slice(0, 5);
+        if(filtered.length) {
+            sugg.style.display = 'block';
+            filtered.forEach(p => {
+                const d = document.createElement('div');
+                d.className = 'sugg-item';
+                d.innerText = p.name;
+                d.onclick = () => { selectedItem = p; document.getElementById('searchInput').value = p.name; sugg.style.display = 'none'; };
+                sugg.appendChild(d);
+            });
+        }
+    });
+
+    function addToBatch() {
+        if(!selectedItem) return alert("Selecione um produto.");
+        const d1Raw = document.getElementById('dateOpen').value;
+        const d2Raw = document.getElementById('dateEnd').value;
+        const unit = document.getElementById('unitSelect').value;
+        
+        // Captura dos valores de peso inseridos
+        const wInitial = parseFloat(document.getElementById('weightInitial').value);
+        const wFinal = parseFloat(document.getElementById('weightFinal').value);
+        
+        if(!d1Raw || !d2Raw) return alert("Preencha as datas.");
+        if(isNaN(wInitial) || isNaN(wFinal)) return alert("Preencha os campos de peso corretamente.");
+        if(wFinal > wInitial) return alert("O peso final não pode ser maior que o peso inicial.");
+        
+        // Cálculo automático da porcentagem consumida
+        let usage = 0;
+        if (wInitial > 0) {
+            usage = (wInitial - wFinal) / wInitial;
+        }
+
+        const d1 = new Date(d1Raw);
+        const d2 = new Date(d2Raw);
+        const days = Math.ceil((d2 - d1) / (1000*60*60*24));
+        
+        let res = { status: "CONSUMO REGULAR", rec: "MANTER ESTOQUE", color: "#f59e0b" };
+
+        // Mantida a mesma regra matemática original de faixas de consumo baseada na porcentagem calculada
+        if(usage >= 0.75 && days <= 10) {
+            res = { status: "ALTO GIRO", rec: "MANTER/REPOR", color: "#10b981" };
+        } else if(usage <= 0.5 && days > 12) {
+            res = { status: "SUBUTILIZAÇÃO", rec: "REDUZIR COMPRA", color: "#ef4444" };
+        } else if(usage === 0) {
+            res = { status: "PERDA TOTAL", rec: "SUSPENDER/REVISAR", color: "#000" };
+        }
+
+        // Arredondamento da exibição da porcentagem para ficar limpo na tela e relatórios
+        const displayUsage = (usage * 100).toFixed(1) + "%";
+
+        batch.push({ 
+            unit,
+            name: selectedItem.name, 
+            dateOpen: d1Raw.split('-').reverse().join('/'),
+            dateEnd: d2Raw.split('-').reverse().join('/'),
+            days, 
+            usage: displayUsage, 
+            ...res 
+        });
+        
+        renderTable();
+        
+        // Limpa os campos após adicionar, exceto as datas/unidade para otimizar lançamentos recorrentes
+        document.getElementById('searchInput').value = '';
+        document.getElementById('weightInitial').value = '';
+        document.getElementById('weightFinal').value = '';
+        selectedItem = null;
+    }
+
+    function renderTable() {
+        const tbody = document.querySelector('#batchTable tbody');
+        tbody.innerHTML = batch.map(i => `
+            <tr>
+                <td><span style="font-size:10px; background:#eee; padding:2px 5px; border-radius:4px;">${i.unit}</span></td>
+                <td><strong>${i.name}</strong></td>
+                <td style="color:${i.color}; font-weight:bold">${i.status}</td>
+                <td>${i.rec}</td>
+                <td>${i.days} d | ${i.usage} uso</td>
+            </tr>
+        `).join('');
+    }
+
+    function exportExcel() {
+        const data = batch.map(i => ({
+            "Unidade": i.unit,
+            "Produto": i.name,
+            "Data Abertura": i.dateOpen,
+            "Data Entrega": i.dateEnd,
+            "Dias de Uso": i.days,
+            "Nível de Uso": i.usage,
+            "Status Técnico": i.status,
+            "Recomendação": i.rec
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+        XLSX.writeFile(wb, "Relatorio_Consumo_Estoque.xlsx");
+    }
+
+    function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.setTextColor(30, 58, 138);
+        doc.text("RELATÓRIO DE AUDITORIA TÉCNICA", 14, 15);
+        
+        const rows = batch.map(i => [i.unit, i.name, i.dateOpen, i.dateEnd, i.status, i.usage]);
+        doc.autoTable({
+            startY: 22,
+            head: [['Unidade', 'Produto', 'Abertura', 'Entrega', 'Status', 'Uso']],
+            body: rows,
+            theme: 'grid',
+            headStyles: { fillColor: [30, 58, 138] }
+        });
+        doc.save("Relatorio_Auditoria_Estoque.pdf");
+    }
+</script>
+</body>
+</html>

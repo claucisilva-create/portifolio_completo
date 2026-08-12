@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfólio | Gestão de TI & Sistemas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --card-bg: #1e293b;
+            --card-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-indigo: #6366f1;
+            --border-color: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 3rem 1.5rem;
+            text-align: center;
+        }
+
+        .header-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .profile-tag {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+            padding: 0.35rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 0.75rem;
+        }
+
+        p.subtitle {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+            flex: 1;
+            width: 100%;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge-count {
+            background-color: var(--accent-indigo);
+            color: #fff;
+            font-size: 0.75rem;
+            padding: 0.15rem 0.6rem;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.25s ease-in-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--accent-blue), var(--accent-indigo));
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: #475569;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-number {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.25rem;
+        }
+
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .tag {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-access {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: #2563eb;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn-access:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn-access svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+        }
+
+        footer {
+            border-top: 1px solid var(--border-color);
+            padding: 2rem 1.5rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-content">
+            <span class="profile-tag">Claus - Portfólio de Sistemas</span>
+            <h1>Sistemas & Soluções</h1>
+            <p class="subtitle">Central de aplicações, dashboards, automações e ferramentas de controle para otimização de processos operacionais e gerenciais.</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="section-header">
+            <div class="section-title">
+                Sistemas e Ferramentas <span class="badge-count">12</span>
+            </div>
+        </div>
+
+        <div class="projects-grid">
+
+            <!-- 1. Registro de Consumo de Materiais -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#01</span></div>
+                    <h2 class="card-title">Registro de Consumo de Materiais</h2>
+                    <p class="card-description">Módulo para controle, apontamento e histórico de consumo de insumos operacionais.</p>
+                    <div class="card-tags"><span class="tag">Insumos</span><span class="tag">Controle Operacional</span></div>
+                </div>
+                <a href="1 Registro de Consumo de materiais.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 2. Manual de uso para ASB -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#02</span></div>
+                    <h2 class="card-title">Manual de Uso para ASB</h2>
+                    <p class="card-description">Documentação interativa e treinamento de procedimentos para Auxiliares de Saúde Bucal.</p>
+                    <div class="card-tags"><span class="tag">Documentação</span><span class="tag">Procedimentos</span></div>
+                </div>
+                <a href="2 Manual de uso para ASB.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 3. Controle de atendimento e material utilizado -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#03</span></div>
+                    <h2 class="card-title">Controle de Atendimento e Material Utilizado</h2>
+                    <p class="card-description">Gerenciamento integrado de atendimentos associado à baixa automática de estoque/insumos.</p>
+                    <div class="card-tags"><span class="tag">Atendimento</span><span class="tag">Fluxo Operacional</span></div>
+                </div>
+                <a href="3 Controle de atendimento e material utilizado.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 4. Dashboard de atendimento dos Residentes -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#04</span></div>
+                    <h2 class="card-title">Dashboard de Atendimento dos Residentes</h2>
+                    <p class="card-description">Painel analítico para acompanhamento de métricas de produtividade e histórico de residentes.</p>
+                    <div class="card-tags"><span class="tag">Dashboard / BI</span><span class="tag">Métricas</span></div>
+                </div>
+                <a href="4 Dashboard de atendimento dos Residentes.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 5. Leitor de XML -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#05</span></div>
+                    <h2 class="card-title">Leitor e Utilitário de XML</h2>
+                    <p class="card-description">Ferramenta para extração, validação e leitura de dados contidos em arquivos XML.</p>
+                    <div class="card-tags"><span class="tag">Utilitário</span><span class="tag">Tratamento de Dados</span></div>
+                </div>
+                <a href="5 Leitor de XML.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 6. Sistema de Controle de estoque completo -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#06</span></div>
+                    <h2 class="card-title">Sistema de Controle de Estoque Completo</h2>
+                    <p class="card-description">Gestão completa de inventário, alertas de estoque mínimo e movimentação de entradas/saídas.</p>
+                    <div class="card-tags"><span class="tag">Estoque</span><span class="tag">Gestão ERP</span></div>
+                </div>
+                <a href="6 Sistema de Controle de estoque completo.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 7. Calculo de frete -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#07</span></div>
+                    <h2 class="card-title">Cálculo de Frete e Logística</h2>
+                    <p class="card-description">Simulador e calculadora para cotação de custos de entrega, peso e tarifas de frete.</p>
+                    <div class="card-tags"><span class="tag">Logística</span><span class="tag">Calculadora</span></div>
+                </div>
+                <a href="7 Calculo de frete.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 8. Controle de autorização clínica -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#08</span></div>
+                    <h2 class="card-title">Controle de Autorização Clínica</h2>
+                    <p class="card-description">Gerenciamento do fluxo de aprovação e validação de solicitações/procedimentos clínicos.</p>
+                    <div class="card-tags"><span class="tag">Workflow</span><span class="tag">Gestão Clínica</span></div>
+                </div>
+                <a href="8 Controle de autorização clínica.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 9. Leitor de frequencia -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#09</span></div>
+                    <h2 class="card-title">Leitor de Frequência e Presença</h2>
+                    <p class="card-description">Aplicação para registro, verificação e emissão de relatórios de frequência de colaboradores.</p>
+                    <div class="card-tags"><span class="tag">Frequência</span><span class="tag">Gestão de Pessoas</span></div>
+                </div>
+                <a href="9 Leitor de frequencia.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 10. Previsão de compra e intervalos -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#10</span></div>
+                    <h2 class="card-title">Previsão de Compra e Intervalos</h2>
+                    <p class="card-description">Módulo preditivo para cálculo do ciclo de compras e periodicidade de reabastecimento.</p>
+                    <div class="card-tags"><span class="tag">Planejamento</span><span class="tag">Supply Chain</span></div>
+                </div>
+                <a href="10 Previsão de compra e intervalos.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 11. Rastreabilidade Avançada - SisOdonto -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#11</span></div>
+                    <h2 class="card-title">Rastreabilidade Avançada - SisOdonto</h2>
+                    <p class="card-description">Sistema de rastreamento de instrumentais, materiais esterilizados e procedimentos.</p>
+                    <div class="card-tags"><span class="tag">Rastreabilidade</span><span class="tag">SisOdonto</span></div>
+                </div>
+                <a href="11 Rastreabilidade Avançada - SisOdonto.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+            <!-- 12. Controle de movimentação de documentos -->
+            <div class="card">
+                <div>
+                    <div class="card-header"><span class="card-number">#12</span></div>
+                    <h2 class="card-title">Controle de Movimentação de Documentos</h2>
+                    <p class="card-description">Protocolo digital para acompanhamento de trâmite, envio e recebimento de documentos.</p>
+                    <div class="card-tags"><span class="tag">Protocolo</span><span class="tag">Gestão Documental</span></div>
+                </div>
+                <a href="12 Controle de movimentação de documentos.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+            </div>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; Portfólio de Gestão de TI & Sistemas Desenvolvidos.</p>
+    </footer>
+
+</body>
+</html>

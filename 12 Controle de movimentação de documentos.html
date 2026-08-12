@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SisOdonto — Controle de Atendimentos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --brand:#0d6efd; --brand-dark:#0a4fbf; --brand-light:#e8f1ff;
+            --teal:#0097a7; --teal-light:#e0f7fa;
+            --green:#2e7d32; --green-light:#e8f5e9;
+            --red:#c62828; --red-light:#ffebee;
+            --amber:#e65100; --amber-light:#fff3e0;
+            --gray-50:#f8fafc; --gray-100:#f1f5f9; --gray-200:#e2e8f0;
+            --gray-400:#94a3b8; --gray-600:#475569; --gray-800:#1e293b;
+            --white:#ffffff; --radius:8px;
+            --shadow-sm:0 1px 3px rgba(0,0,0,.08);
+            --shadow:0 4px 16px rgba(0,0,0,.10);
+            --shadow-lg:0 8px 32px rgba(0,0,0,.15);
+        }
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html,body{height:100%}
+        body{font-family:'Segoe UI',system-ui,sans-serif;font-size:15px;background:var(--gray-100);color:var(--gray-800)}
+        .app-wrapper{max-width:1100px;margin:0 auto;padding:0 16px 40px}
+        .hidden{display:none!important}
+
+        /* Topbar */
+        .topbar{background:linear-gradient(135deg,#0d6efd 0%,#0a4fbf 60%,#0097a7 100%);color:white;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:64px;box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
+        .topbar-brand{display:flex;align-items:center;gap:12px}
+        .topbar-brand .logo-icon{width:38px;height:38px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px}
+        .topbar-brand h1{font-size:1.1rem;font-weight:700}
+        .topbar-brand small{font-size:.75rem;opacity:.8;display:block;margin-top:1px}
+        .topbar-actions{display:flex;align-items:center;gap:8px}
+        .topbar-user{background:rgba(255,255,255,.15);border-radius:20px;padding:4px 12px;font-size:.85rem;display:flex;align-items:center;gap:6px}
+        .session-timer{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:4px 12px;font-size:.78rem;display:flex;align-items:center;gap:5px}
+
+        /* Buttons */
+        button{cursor:pointer;border:none;border-radius:var(--radius);font-weight:600;transition:all .2s}
+        .btn{padding:10px 18px;font-size:.88rem;display:inline-flex;align-items:center;gap:6px}
+        .btn-primary{background:var(--brand);color:white}.btn-primary:hover{background:var(--brand-dark)}
+        .btn-success{background:var(--green);color:white}.btn-success:hover{background:#1b5e20}
+        .btn-danger{background:var(--red);color:white}.btn-danger:hover{background:#b71c1c}
+        .btn-amber{background:var(--amber);color:white}.btn-amber:hover{background:#bf360c}
+        .btn-teal{background:var(--teal);color:white}.btn-teal:hover{background:#00838f}
+        .btn-ghost{background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.3);padding:7px 14px;font-size:.82rem}.btn-ghost:hover{background:rgba(255,255,255,.25)}
+        .btn-full{width:100%;justify-content:center;padding:14px;font-size:1rem}
+
+        /* Cards */
+        .card{background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:var(--shadow-sm)}
+        .card-header{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid var(--gray-100)}
+        .card-header .icon-circle{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+        .card-header h3{font-size:1.05rem;color:var(--gray-800)}
+
+        /* Form */
+        .field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:200px;position:relative;}
+        .field label{font-size:.82rem;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px}
+        .field input,.field select,.field textarea{padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-size:.92rem;background:var(--white);color:var(--gray-800);transition:border-color .2s;width:100%}
+        .field input:focus,.field select:focus{border-color:var(--brand);outline:none}
+        .row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+
+        /* Auth Screen Design */
+        #auth-section{max-width:440px;margin:80px auto;background:var(--white);border-radius:16px;box-shadow:var(--shadow-lg);overflow:hidden}
+        .auth-header{background:linear-gradient(135deg,#0d6efd,#0a4fbf,#0097a7);padding:32px 32px 24px;text-align:center;color:white}
+        .auth-header .auth-logo{font-size:3rem;margin-bottom:8px}
+        .auth-header h2{font-size:1.3rem;margin-bottom:4px}
+        .auth-header p{font-size:.85rem;opacity:.85}
+        .auth-body{padding:28px 32px 32px}
+        .auth-body .field{margin-bottom:16px}
+        .auth-error{color:var(--red);font-size:.85rem;margin-top:10px;text-align:center;font-weight:600}
+
+        /* Tables & Badges */
+        .table-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:.88rem}
+        th{background:#0d6efd;color:white;padding:11px 14px;text-align:left;font-weight:600;font-size:.82rem}
+        td{padding:11px 14px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+        
+        .page-header{display:flex;align-items:center;justify-content:space-between;margin:24px 0 20px}
+    </style>
+</head>
+<body>
+
+<!-- TELA DE AUTENTICAÇÃO E LOGIN -->
+<div id="auth-section">
+    <div class="auth-header">
+        <div class="auth-logo">🦷</div>
+        <h2>SisOdonto</h2>
+        <p>Acesso Restrito ao Sistema de Odontologia</p>
+    </div>
+    <div class="auth-body">
+        <div class="field">
+            <label>Tipo de Perfil</label>
+            <select id="login-role" onchange="alternarCamposPerfil()">
+                <option value="residente">👤 Residente / Usuário</option>
+                <option value="admin">🔑 Administrador</option>
+            </select>
+        </div>
+
+        <!-- Campo para Residente -->
+        <div class="field" id="group-residente">
+            <label>Selecione o Residente</label>
+            <select id="login-user-select">
+                <option value="Dr. Carlos Silva">Dr. Carlos Silva</option>
+                <option value="Dra. Ana Costa">Dra. Ana Costa</option>
+                <option value="Dr. João Pedro">Dr. João Pedro</option>
+            </select>
+        </div>
+
+        <!-- Campo para Admin -->
+        <div class="field hidden" id="group-admin">
+            <label>Usuário Administrador</label>
+            <input type="text" id="login-admin-user" value="admin" readonly style="background:var(--gray-100)">
+        </div>
+
+        <div class="field">
+            <label>Senha de Acesso</label>
+            <input type="password" id="login-pass" placeholder="Digite sua senha" onkeydown="if(event.key==='Enter')autenticarAcesso()">
+        </div>
+
+        <button onclick="autenticarAcesso()" class="btn btn-primary btn-full" style="margin-top:10px;">🔐 Acessar Painel</button>
+        <div id="auth-error-msg" class="auth-error"></div>
+    </div>
+</div>
+
+<!-- SISTEMA PRINCIPAL -->
+<div id="app-section" class="hidden">
+    <div class="topbar">
+        <div class="topbar-brand">
+            <div class="logo-icon">🦷</div>
+            <div><h1>SisOdonto</h1><small>Controle de Atendimentos</small></div>
+        </div>
+        <div class="topbar-actions">
+            <div class="topbar-user"><span id="display-role-badge"></span> <span id="display-user"></span></div>
+            <button onclick="logoutManual()" class="btn-ghost" style="border-radius:6px;">🚪 Sair</button>
+        </div>
+    </div>
+
+    <div class="app-wrapper">
+
+        <!-- PAINEL EXCLUSIVO DO ADMINISTRADOR -->
+        <div id="admin-menu" class="hidden">
+            <div class="page-header"><h2>📊 Painel Exclusivo de Administração</h2></div>
+
+            <div class="card" style="border-left: 4px solid var(--amber);">
+                <div class="card-header">
+                    <div class="icon-circle" style="background:var(--amber-light)">📢</div>
+                    <div><h3>Avisos e Informativos</h3><p>Painel de gestão central do sistema</p></div>
+                </div>
+                <p style="font-size: 0.9rem; color: var(--gray-600);">Bem-vindo ao painel restrito de administração. Aqui você possui acesso completo aos relatórios de insumos, auditoria e controles gerais.</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-circle" style="background:var(--teal-light)">📦</div>
+                    <div><h3>Relatório de Consumo e Gestão</h3><p>Painel protegido por senha</p></div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Residente</th>
+                                <th>Status do Acesso</th>
+                                <th>Privilégio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Administrador Geral</td>
+                                <td><span style="color:var(--green);font-weight:bold">Ativo</span></td>
+                                <td>Acesso Total (Leitura/Escrita)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAINEL DO RESIDENTE / USUÁRIO -->
+        <div id="residente-menu" class="hidden">
+            <div class="page-header"><h2>🦷 Painel do Residente</h2></div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-circle" style="background:#e8f1ff">👤</div>
+                    <div><h3>Área do Usuário</h3><p>Lançamento de atendimentos diários</p></div>
+                </div>
+                <p style="font-size: 0.9rem; color: var(--gray-600);">Você está autenticado como residente. Registre aqui suas atividades e procedimentos odontológicos.</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // DADOS E SENHAS DE ACESSO (PROTEÇÃO)
+    const CREDENCIAIS = {
+        admin: {
+            usuario: "admin",
+            senha: "1234" // Senha do Administrador
+        },
+        residentes: {
+            "Dr. Carlos Silva": "123",
+            "Dra. Ana Costa": "123",
+            "Dr. João Pedro": "123"
+        }
+    };
+
+    function alternarCamposPerfil() {
+        const role = document.getElementById('login-role').value;
+        const groupResidente = document.getElementById('group-residente');
+        const groupAdmin = document.getElementById('group-admin');
+        const errorMsg = document.getElementById('auth-error-msg');
+        
+        errorMsg.innerText = "";
+        
+        if (role === 'admin') {
+            groupResidente.classList.add('hidden');
+            groupAdmin.classList.remove('hidden');
+        } else {
+            groupResidente.classList.remove('hidden');
+            groupAdmin.classList.add('hidden');
+        }
+    }
+
+    function autenticarAcesso() {
+        const role = document.getElementById('login-role').value;
+        const senhaDigitada = document.getElementById('login-pass').value.trim();
+        const errorMsg = document.getElementById('auth-error-msg');
+        
+        errorMsg.innerText = "";
+
+        if (!senhaDigitada) {
+            errorMsg.innerText = "❌ Por favor, informe a senha de acesso.";
+            return;
+        }
+
+        if (role === 'admin') {
+            // Valida acesso de Administrador
+            if (senhaDigitada === CREDENCIAIS.admin.senha) {
+                concluirLogin("Administrador", "admin");
+            } else {
+                errorMsg.innerText = "❌ Senha de Administrador incorreta!";
+            }
+        } else {
+            // Valida acesso de Residente/Usuário
+            const usuarioSel = document.getElementById('login-user-select').value;
+            const senhaCorreta = CREDENCIAIS.residentes[usuarioSel];
+
+            if (senhaDigitada === senhaCorreta) {
+                concluirLogin(usuarioSel, "residente");
+            } else {
+                errorMsg.innerText = "❌ Senha incorreta para o usuário selecionado!";
+            }
+        }
+    }
+
+    function concluirLogin(nomeUsuario, perfil) {
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('app-section').classList.remove('hidden');
+        
+        document.getElementById('display-user').innerText = nomeUsuario;
+
+        if (perfil === 'admin') {
+            document.getElementById('display-role-badge').innerText = "🔑";
+            document.getElementById('admin-menu').classList.remove('hidden');
+            document.getElementById('residente-menu').classList.add('hidden');
+        } else {
+            document.getElementById('display-role-badge').innerText = "👤";
+            document.getElementById('residente-menu').classList.remove('hidden');
+            document.getElementById('admin-menu').classList.add('hidden');
+        }
+    }
+
+    function logoutManual() {
+        location.reload();
+    }
+</script>
+</body>
+</html>

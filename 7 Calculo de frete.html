@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FreteGO — Consulta de Entregas</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --black: #0a0a0a; --dark: #111111; --card: #1a1a1a; --border: #2a2a2a;
+    --gold: #c9a84c; --gold-light: #e8c96e; --green: #22c55e; --red: #ef4444;
+    --text: #e5e5e5; --muted: #888;
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--black); color: var(--text); min-height: 100vh; }
+
+  /* ── TUTORIAL ── */
+  #tutorialOverlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+    z-index: 200; align-items: center; justify-content: center; padding: 16px;
+  }
+  #tutorialOverlay.active { display: flex; }
+  .tut-modal {
+    background: #111; border: 1px solid #2a2a2a; border-radius: 16px;
+    width: 100%; max-width: 520px; overflow: hidden;
+  }
+  .tut-header {
+    background: #1a1a1a; border-bottom: 1px solid #2a2a2a;
+    padding: 20px 24px 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  }
+  .tut-crown { font-size: 11px; letter-spacing: 2px; color: var(--gold); font-weight: 600; margin-bottom: 4px; }
+  .tut-title { font-size: 20px; font-weight: 700; color: var(--text); }
+  .tut-close {
+    background: none; border: 1px solid #2a2a2a; color: var(--muted);
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .2s;
+  }
+  .tut-close:hover { border-color: var(--gold); color: var(--gold); }
+  .tut-steps-nav { display: flex; border-bottom: 1px solid #2a2a2a; overflow-x: auto; }
+  .tut-step-btn {
+    flex: 1; min-width: 0; padding: 10px 6px; text-align: center; cursor: pointer;
+    border-bottom: 2px solid transparent; border-top: none; border-left: none; border-right: none;
+    transition: all .2s; font-size: 11px; color: #666; background: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tut-step-btn.active { border-bottom-color: var(--gold); color: var(--gold); font-weight: 600; }
+  .tut-step-btn .tnum {
+    display: block; width: 22px; height: 22px; border: 1.5px solid currentColor;
+    border-radius: 50%; margin: 0 auto 4px; line-height: 19px; font-size: 11px; font-weight: 700;
+  }
+  .tut-body { padding: 24px; min-height: 240px; }
+  .tut-pane { display: none; }
+  .tut-pane.active { display: block; }
+  .tut-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.2);
+    display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 14px;
+  }
+  .tut-ptitle { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .tut-pdesc { font-size: 14px; color: #999; line-height: 1.6; margin-bottom: 16px; }
+  .tut-cards { display: flex; flex-direction: column; gap: 8px; }
+  .tut-card {
+    background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px;
+    padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px;
+  }
+  .tut-cicon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+  }
+  .ic-gold { background: rgba(201,168,76,0.12); }
+  .ic-green { background: rgba(34,197,94,0.1); }
+  .ic-blue { background: rgba(59,130,246,0.1); }
+  .ic-red { background: rgba(239,68,68,0.1); }
+  .tut-clabel { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .tut-csub { font-size: 12px; color: #777; line-height: 1.4; }
+  .tut-tip {
+    background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 8px; padding: 10px 14px; display: flex; align-items: flex-start; gap: 8px; margin-top: 14px;
+  }
+  .tut-tip-icon { font-size: 15px; flex-shrink: 0; }
+  .tut-tip-text { font-size: 12px; color: var(--gold); line-height: 1.5; }
+  .tut-footer {
+    padding: 16px 24px; border-top: 1px solid #2a2a2a;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .tut-pdots { display: flex; gap: 5px; align-items: center; }
+  .tpd { width: 6px; height: 6px; border-radius: 50%; background: #2a2a2a; transition: all .3s; }
+  .tpd.active { background: var(--gold); width: 18px; border-radius: 3px; }
+  .tut-footer-btns { display: flex; gap: 8px; }
+  .btn-tprev {
+    background: none; border: 1px solid #2a2a2a; color: var(--muted);
+    padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s;
+  }
+  .btn-tprev:hover { border-color: #888; color: var(--text); }
+  .btn-tnext {
+    background: var(--gold); color: #000; border: none;
+    padding: 9px 20px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 700; letter-spacing: .5px; transition: opacity .2s;
+  }
+  .btn-tnext:hover { opacity: .85; }
+  .btn-tnext.finish { background: var(--green); }
+
+  /* ── LOGIN ── */
+  #loginScreen {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92); backdrop-filter: blur(8px);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  #loginScreen.active { display: flex; }
+  .login-box {
+    background: var(--card); border: 1px solid var(--gold); border-radius: 16px;
+    padding: 40px; width: 340px; text-align: center;
+  }
+  .login-box .crown { font-size: 40px; margin-bottom: 10px; }
+  .login-box h2 { font-family: 'Rajdhani', sans-serif; font-size: 22px; color: var(--gold); margin-bottom: 4px; letter-spacing: 2px; }
+  .login-box p { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .login-box input {
+    width: 100%; padding: 12px 16px; background: #0f0f0f; border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 12px; outline: none; transition: border .2s;
+  }
+  .login-box input:focus { border-color: var(--gold); }
+  .btn-login {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: #000; font-weight: 700; font-size: 15px; border: none; border-radius: 8px; cursor: pointer;
+    font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; transition: opacity .2s;
+  }
+  .btn-login:hover { opacity: .85; }
+  .btn-close-login { margin-top: 12px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .login-err { color: var(--red); font-size: 13px; margin-top: 8px; display: none; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--dark); border-bottom: 1px solid var(--border);
+    padding: 0 24px; display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 50;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .logo-text { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: 2px; }
+  .logo-text span { color: var(--gold); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  #adminBadge {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: #000; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+    font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; display: none;
+  }
+  .btn-admin-toggle {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all .2s;
+  }
+  .btn-admin-toggle:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ── MAIN ── */
+  main { max-width: 960px; margin: 0 auto; padding: 32px 20px; }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center; margin-bottom: 40px; padding: 40px 20px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+    border: 1px solid var(--border); border-radius: 16px; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%); pointer-events: none;
+  }
+  .hero-label {
+    display: inline-block; background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold); font-size: 11px; letter-spacing: 3px; font-weight: 600;
+    padding: 4px 14px; border-radius: 20px; margin-bottom: 16px; font-family: 'Rajdhani', sans-serif;
+  }
+  .hero h1 { font-family: 'Rajdhani', sans-serif; font-size: 36px; font-weight: 700; letter-spacing: 1px; line-height: 1.1; margin-bottom: 8px; }
+  .hero h1 span { color: var(--gold); }
+  .hero p { color: var(--muted); font-size: 14px; }
+  .soundwave { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 24px; margin: 20px auto 0; opacity: .4; }
+  .soundwave span { display: block; width: 3px; background: var(--gold); border-radius: 2px; animation: wave 1.2s ease-in-out infinite; }
+  .soundwave span:nth-child(1){height:6px;animation-delay:0s}
+  .soundwave span:nth-child(2){height:14px;animation-delay:.1s}
+  .soundwave span:nth-child(3){height:20px;animation-delay:.2s}
+  .soundwave span:nth-child(4){height:10px;animation-delay:.3s}
+  .soundwave span:nth-child(5){height:18px;animation-delay:.15s}
+  .soundwave span:nth-child(6){height:8px;animation-delay:.25s}
+  .soundwave span:nth-child(7){height:15px;animation-delay:.05s}
+  @keyframes wave { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(0.3)} }
+
+  /* ── TOGGLE BAR ── */
+  .toggle-bar {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;
+  }
+  .t-title { font-size: 14px; font-weight: 500; }
+  .t-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .toggle-switch { position: relative; width: 48px; height: 26px; cursor: pointer; }
+  .toggle-switch input { display: none; }
+  .toggle-switch .slider { position: absolute; inset: 0; background: var(--border); border-radius: 13px; transition: .3s; }
+  .toggle-switch .slider::after { content:''; position:absolute; width:20px; height:20px; background:var(--muted); border-radius:50%; top:3px; left:3px; transition:.3s; }
+  .toggle-switch input:checked + .slider { background: rgba(201,168,76,0.3); }
+  .toggle-switch input:checked + .slider::after { background: var(--gold); transform: translateX(22px); }
+
+  /* ── CONFIGURAÇÃO DA ENTREGA FULL ── */
+  .full-delivery-bar {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+  .full-delivery-bar .form-group label { font-size: 11px; color: var(--gold); letter-spacing: 1px; font-weight: 600; margin-bottom: 6px; display: block;}
+  .full-delivery-bar .form-group select, .full-delivery-bar .form-group input { 
+    width: 100%; padding: 11px 14px; background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border .2s; 
+  }
+  .full-delivery-bar .form-group select:focus, .full-delivery-bar .form-group input:focus { border-color: var(--gold); }
+
+  /* ── SEARCH ── */
+  .search-section { margin-bottom: 32px; }
+  .search-wrapper { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .search-label { font-size: 12px; letter-spacing: 2px; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+  .search-input-wrap { position: relative; }
+  .search-input-wrap input {
+    width: 100%; padding: 14px 16px 14px 48px; background: #0f0f0f; border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 16px; outline: none; transition: border .2s;
+  }
+  .search-input-wrap input:focus { border-color: var(--gold); }
+  .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 18px; pointer-events: none; }
+  .suggestions {
+    background: var(--card); border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 10px 10px; display: none; max-height: 220px; overflow-y: auto;
+  }
+  .suggestion-item {
+    padding: 12px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); transition: background .15s;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover { background: rgba(201,168,76,0.07); }
+  .s-name { font-size: 14px; }
+  .s-price { color: var(--gold); font-weight: 600; font-size: 14px; }
+
+  /* ── RESULT ── */
+  #resultCard {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px; text-align: center; display: none; margin-top: 16px; position: relative; overflow: hidden;
+  }
+  #resultCard.active { display: block; }
+  #resultCard::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold)); }
+  .result-neighborhood { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .result-price { font-family: 'Rajdhani', sans-serif; font-size: 52px; font-weight: 700; color: var(--gold); line-height: 1; }
+  .result-details { font-size: 12px; color: #999; margin-top: 8px; line-height: 1.4; }
+  .result-tag {
+    display: inline-block; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3);
+    color: var(--green); font-size: 11px; padding: 3px 12px; border-radius: 20px;
+    letter-spacing: 1px; font-weight: 600; margin-top: 10px;
+  }
+  .result-tag.special { background: rgba(201,168,76,0.1); border-color: rgba(201,168,76,0.3); color: var(--gold); }
+  .chain-decor { font-size: 28px; opacity:.07; position:absolute; right:20px; top:50%; transform:translateY(-50%); pointer-events:none; }
+
+  /* ── SERVICES USER ── */
+  .service-user-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-header h3 { font-family: 'Rajdhani', sans-serif; font-size: 18px; letter-spacing: 1px; }
+  .tag-badge { display: inline-block; background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.2); color: var(--gold); font-size: 10px; padding: 2px 8px; border-radius: 10px; letter-spacing: 1px; font-weight: 600; vertical-align: middle; margin-left: 6px; }
+
+  /* ── ADMIN ── */
+  #adminPanel { display: none; margin-top: 8px; }
+  #adminPanel.active { display: block; }
+  .tabs { display: flex; gap: 2px; background: var(--dark); border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+  .tab-btn { flex: 1; padding: 10px; background: none; border: none; color: var(--muted); cursor: pointer; border-radius: 7px; font-size: 13px; font-weight: 500; transition: all .2s; }
+  .tab-btn.active { background: var(--card); color: var(--text); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th { text-align: left; padding: 10px 12px; color: var(--muted); font-size: 11px; letter-spacing: 1.5px; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .data-table td { padding: 12px 12px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .price-cell { color: var(--gold); font-weight: 600; font-family: 'Rajdhani', sans-serif; font-size: 16px; }
+  .admin-form { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .admin-form h3 { font-size: 15px; margin-bottom: 18px; color: var(--gold); font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 11px; color: var(--muted); letter-spacing: 1px; font-weight: 600; }
+  .form-group input { padding: 11px 14px; background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border .2s; }
+  .form-group input:focus { border-color: var(--gold); }
+  .form-full { grid-column: 1 / -1; }
+  .btn-save { background: linear-gradient(135deg, var(--gold), var(--gold-light)); color: #000; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; font-size: 14px; transition: opacity .2s; margin-top: 14px; }
+  .btn-save:hover { opacity: .85; }
+  .btn-delete { background: none; border: none; color: var(--red); cursor: pointer; font-size: 18px; padding: 4px 8px; transition: opacity .2s; }
+  .btn-delete:hover { opacity: .6; }
+  .btn-edit { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px 8px; transition: color .2s; }
+  .btn-edit:hover { color: var(--gold); }
+  .extra-fee-wrap { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .extra-fee-wrap input { width: 120px; padding: 8px 12px; background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; }
+  .extra-fee-wrap input:focus { border-color: var(--gold); }
+  .extra-fee-wrap span { color: var(--muted); font-size: 13px; }
+
+  /* ── TOAST ── */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--green); color: var(--green); padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; z-index: 999; transform: translateY(80px); transition: transform .3s; pointer-events: none; }
+  .toast.show { transform: translateY(0); }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 26px; }
+    .result-price { font-size: 40px; }
+    header { padding: 0 14px; }
+    main { padding: 20px 12px; }
+    .full-delivery-bar { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="tutorialOverlay">
+  <div class="tut-modal">
+    <div class="tut-header">
+      <div>
+        <div class="tut-crown">👑 BEM-VINDO, CLAUDIO</div>
+        <div class="tut-title">Como usar o FreteGO</div>
+      </div>
+      <button class="tut-close" onclick="closeTutorial()">✕</button>
+    </div>
+    <div class="tut-steps-nav" id="tutNav"></div>
+    <div class="tut-body">
+
+      <div class="tut-pane active" id="tpane-0">
+        <div class="tut-icon">🏠</div>
+        <div class="tut-ptitle">Visão geral do sistema</div>
+        <div class="tut-pdesc">O FreteGO tem duas partes: a <strong style="color:#e5e5e5">área pública</strong> que seus clientes usam para consultar preços, e a <strong style="color:#e5e5e5">área admin</strong> exclusiva sua para gerenciar tudo.</div>
+        <div class="tut-cards">
+          <div class="tut-card"><div class="tut-cicon ic-gold">👁</div><div><div class="tut-clabel">Área pública (clientes)</div><div class="tut-csub">Busca de bairro, preço na hora, toggle feriado/FDS e lista de serviços especiais</div></div></div>
+          <div class="tut-card"><div class="tut-cicon ic-gold">👑</div><div><div class="tut-clabel">Área admin (você)</div><div class="tut-csub">Gerenciar bairros, preços, serviços e configurações — só você acessa</div></div></div>
+        </div>
+        <div class="tut-tip"><span class="tut-tip-icon">🎤</span><span class="tut-tip-text">Tudo que você cadastrar fica salvo automaticamente no navegador — sem precisar de servidor ou internet extra.</span></div>
+      </div>
+
+      <div class="tut-pane" id="tpane-1">
+        <div class="tut-icon">🏙</div>
+        <div class="tut-ptitle">Aba "Bairros & Fretes"</div>
+        <div class="tut-pdesc">Aqui você controla todos os bairros atendidos e seus preços de entrega base.</div>
+        <div class="tut-cards">
+          <div class="tut-card"><div class="tut-cicon ic-green">➕</div><div><div class="tut-clabel">Adicionar bairro novo</div><div class="tut-csub">Preencha o nome do bairro e o preço base em R$, depois clique em "Salvar Bairro"</div></div></div>
+          <div class="tut-card"><div class="tut-cicon ic-gold">✏️</div><div><div class="tut-clabel">Editar bairro existente</div><div class="tut-csub">Clique no ✏️ ao lado do bairro na tabela — o formulário preenche automaticamente. Altere o que quiser e salve</div></div></div>
+          <div class="tut-card"><div class="tut-cicon ic-red">🗑</div><div><div class="tut-clabel">Remover bairro</div><div class="tut-csub">Clique no 🗑 ao lado do bairro. Uma confirmação é pedida antes de deletar permanentemente</div></div></div>
+        </div>
+      </div>
+
+      <div class="tut-pane" id="tpane-2">
+        <div class="tut-icon">📦</div>
+        <div class="tut-ptitle">Aba "Serviços"</div>
+        <div class="tut-pdesc">Cadastre cobranças diferenciadas além do frete comum — moto, expresso, carga frágil, qualquer serviço com preço próprio que você queira oferecer.</div>
+        <div class="tut-cards">
+          <div class="tut-card"><div class="tut-cicon ic-gold">📝</div><div><div class="tut-clabel">Preencher o formulário</div><div class="tut-csub">Nome do serviço (ex: "Moto Expresso"), valor em R$ e uma breve descrição para o cliente</div></div></div>
+          <div class="tut-card"><div class="tut-green">✅</div><div><div class="tut-clabel">Salvar e publicar</div><div class="tut-csub">Após salvar, o serviço aparece imediatamente na área pública para todos os clientes verem</div></div></div>
+          <div class="tut-card"><div class="tut-cicon ic-red">🗑</div><div><div class="tut-clabel">Remover serviço</div><div class="tut-csub">Clique no 🗑 na tabela de serviços — o item some da lista pública na hora</div></div></div>
+        </div>
+      </div>
+
+      <div class="tut-pane" id="tpane-3">
+        <div class="tut-icon">⚙️</div>
+        <div class="tut-ptitle">Aba "Configuração"</div>
+        <div class="tut-pdesc">Defina o valor da taxa extra cobrada nos finais de semana e feriados. Ela é somada automaticamente ao preço base quando o cliente ativa o toggle.</div>
+        <div class="tut-cards">
+          <div class="tut-card"><div class="tut-cicon ic-gold">💰</div><div><div class="tut-clabel">Taxa extra FDS / Feriado</div><div class="tut-csub">Digite o valor em R$ e salve. Será somado ao frete de qualquer bairro quando o toggle estiver ativo</div></div></div>
+          <div class="tut-card"><div class="tut-cicon ic-blue">🔐</div><div><div class="tut-clabel">Encerrar sessão com segurança</div><div class="tut-csub">Use o botão vermelho "Encerrar sessão" para sair do modo admin. A área pública continua funcionando normalmente</div></div></div>
+        </div>
+        <div class="tut-tip"><span class="tut-tip-icon">💡</span><span class="tut-tip-text">O cliente decide ativar ou não a taxa pelo toggle na tela dele. Você só define aqui o quanto cobrar.</span></div>
+      </div>
+
+      <div class="tut-pane" id="tpane-4">
+        <div class="tut-icon">🚀</div>
+        <div class="tut-ptitle">Tudo pronto, Claudio!</div>
+        <div class="tut-pdesc">Você já tem tudo que precisa para gerenciar suas entregas. Resumo rápido do fluxo:</div>
+        <div class="tut-cards">
+          <div class="tut-card"><div class="tut-cicon ic-gold">1️⃣</div><div><div class="tut-clabel">Cadastre bairros e preços</div><div class="tut-csub">Aba "Bairros & Fretes" → preencha nome + preço → Salvar</div></div></div>
+          <div class="tut-card"><div class="tut-cicon ic-gold">2️⃣</div><div><div class="tut-clabel">Adicione serviços especiais</div><div class="tut-csub">Aba "Serviços" → nome, preço e descrição → Salvar</div></div></div>
+          <div class="tut-card"><div class="tut-cicon ic-gold">3️⃣</div><div><div class="tut-clabel">Configure a taxa de feriado</div><div class="tut-csub">Aba "Configuração" → defina o valor extra → Salvar</div></div></div>
+        </div>
+        <div class="tut-tip"><span class="tut-tip-icon">🎤</span><span class="tut-tip-text">Este tutorial aparece toda vez que você faz login. Feche pelo ✕ ou clique em "Entendido!" para concluir.</span></div>
+      </div>
+
+    </div>
+    <div class="tut-footer">
+      <div class="tut-pdots" id="tutDots"></div>
+      <div class="tut-footer-btns">
+        <button class="btn-tprev" id="btnTPrev" onclick="tutStep(-1)" style="display:none">← Voltar</button>
+        <button class="btn-tnext" id="btnTNext" onclick="tutStep(1)">Próximo →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="crown">👑</div>
+    <h2>ÁREA ADMIN</h2>
+    <p>Acesso exclusivo — Thupack Style</p>
+    <input type="text" id="loginUser" placeholder="Usuário" />
+    <input type="password" id="loginPass" placeholder="Senha" />
+    <div class="login-err" id="loginErr">Usuário ou senha incorretos</div>
+    <button class="btn-login" onclick="doLogin()">ENTRAR</button>
+    <button class="btn-close-login" onclick="closeLogin()">Cancelar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🚚</div>
+    <div class="logo-text">FRETE<span>GO</span></div>
+  </div>
+  <div class="header-right">
+    <div id="adminBadge">👑 ADMIN</div>
+    <button class="btn-admin-toggle" id="adminToggleBtn" onclick="toggleAdminAccess()">Admin</button>
+  </div>
+</header>
+
+<main>
+
+  <div id="userSection">
+    <div class="hero">
+      <div class="hero-label">⚡ MODALIDADE ENTREGA FULL</div>
+      <h1>Cálculo de Entrega <span>Imediata</span></h1>
+      <p>O motorista vai direto até você, não importa onde ele esteja.</p>
+      <div class="soundwave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+
+    <div class="full-delivery-bar">
+      <div class="form-group">
+        <label>📍 LOCAL ATUAL DO MOTORISTA</label>
+        <select id="driverLocation" onchange="refreshResult()">
+          </select>
+      </div>
+      <div class="form-group">
+        <label>💰 PREÇO POR KM DE DESLOCAMENTO</label>
+        <input type="number" id="pricePerKm" value="2.00" step="0.50" oninput="refreshResult()" />
+      </div>
+    </div>
+
+    <div class="toggle-bar">
+      <div>
+        <div class="t-title">🗓 Feriado / Final de Semana</div>
+        <div class="t-sub">Taxa extra administrativa: <strong id="extraDisplay">R$ 5,00</strong></div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="weekendToggle" onchange="refreshResult()">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="search-section">
+      <div class="search-wrapper">
+        <div class="search-label">DESTINO DA ENTREGA (BUSCAR BAIRRO)</div>
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Ex: Centro, Benfica, Bairu, Manoel Honório..." oninput="handleSearch()" autocomplete="off" />
+        </div>
+        <div class="suggestions" id="suggestions"></div>
+      </div>
+      <div id="resultCard">
+        <div class="chain-decor">⛓️</div>
+        <div class="result-neighborhood" id="rNeighborhood"></div>
+        <div class="result-price" id="rPrice"></div>
+        <div class="result-details" id="rDetails"></div>
+        <div class="result-tag" id="rTag"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-header">
+        <h3>Serviços Especiais <span class="tag-badge">+</span></h3>
+      </div>
+      <div id="servicesListUser"></div>
+    </div>
+  </div>
+
+  <div id="adminPanel">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('fretes')">🏙 Bairros & Fretes</button>
+      <button class="tab-btn" onclick="switchTab('servicos')">📦 Serviços</button>
+      <button class="tab-btn" onclick="switchTab('config')">⚙️ Configuração</button>
+    </div>
+
+    <div class="tab-pane active" id="tab-fretes">
+      <div class="admin-form">
+        <h3>➕ ADICIONAR / EDITAR BAIRRO</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>NOME DO BAIRRO</label><input type="text" id="fBairro" placeholder="Ex: Cascatinha" /></div>
+          <div class="form-group"><label>PREÇO BASE / TAXA FIXA (R$)</label><input type="number" id="fPreco" placeholder="0.00" step="0.50" /></div>
+        </div>
+        <button class="btn-save" onclick="saveBairro()">💾 SALVAR BAIRRO</button>
+      </div>
+      <div class="section-header"><h3>Tabela de Fretes (Taxas Fixas de Destino)</h3></div>
+      <table class="data-table">
+        <thead><tr><th>BAIRRO</th><th>PREÇO BASE</th><th></th></tr></thead>
+        <tbody id="fretesTbody"></tbody>
+      </table>
+    </div>
+
+    <div class="tab-pane" id="tab-servicos">
+      <div class="admin-form">
+        <h3>➕ NOVO SERVIÇO</h3>
+        <div class="form-grid">
+          <div class="form-group form-full"><label>NOME DO SERVIÇO</label><input type="text" id="sNome" placeholder="Ex: Entrega Expressa, Moto, Frágil..." /></div>
+          <div class="form-group"><label>PREÇO (R$)</label><input type="number" id="sPreco" placeholder="0.00" step="0.50" /></div>
+          <div class="form-group"><label>DESCRIÇÃO</label><input type="text" id="sDesc" placeholder="Breve descrição para o cliente..." /></div>
+        </div>
+        <button class="btn-save" onclick="saveServico()">💾 SALVAR SERVIÇO</button>
+      </div>
+      <div class="section-header"><h3>Serviços Cadastrados</h3></div>
+      <table class="data-table">
+        <thead><tr><th>SERVIÇO</th><th>PREÇO</th><th>DESCRIÇÃO</th><th></th></tr></thead>
+        <tbody id="servicosTbody"></tbody>
+      </table>
+    </div>
+
+    <div class="tab-pane" id="tab-config">
+      <div class="admin-form">
+        <h3>⚙️ CONFIGURAÇÕES GERAIS</h3>
+        <div class="form-group" style="margin-bottom:20px">
+          <label>TAXA EXTRA FERIADO / FDS (R$)</label>
+          <div class="extra-fee-wrap">
+            <input type="number" id="cfgExtra" step="0.50" />
+            <span>Ativada automaticamente no login administrativo</span>
+          </div>
+        </div>
+        <button class="btn-save" onclick="saveConfig()">💾 SALVAR CONFIGURAÇÃO</button>
+      </div>
+      <div class="admin-form">
+        <h3 style="color:var(--red)">🔐 SESSÃO ADMIN</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Ao encerrar, a área admin some. A área pública continua funcionando normalmente.</p>
+        <button class="btn-save" style="background:var(--red);color:#fff" onclick="logout()">Encerrar sessão admin</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+let state = {
+  isAdmin: false,
+  selectedBairro: null,
+  extraFee: 5.00,
+  fretes: {
+    "Adolfo Vireque":20,"Aeroporto":20,"Alphaville 1 e 2":35,"Alto dos Passos":14,
+    "Amazonas":30,"Aracy":22,"Bairro Industrial":25,"Bairu":22,
+    "Benfica":55,"Bom Jardim":25,"Bom Pastor":14,"Bonfim":20,
+    "Cascatinha":14,"Centro":14,"Cidade do Sol":32,"Dom Bosco":18,
+    "Esplanada":25,"Estrela do Sul":14,"Fabrica":23,"Filgueiras":62,
+    "Graminha":24,"Granbery":14,"Ipiranga":22,"Jardim Glória":17,
+    "Manoel Honório":20,"Mariano Procópio":20,"Marilândia":28,"Milho Branco":25,
+    "Monte Castelo":25,"Nautico":67,"Nova Era":42,"Paineiras":15,
+    "Santa Cruz":45,"Santa Helena":15,"Santa Luzia":16,"Santa Terezinha":24,
+    "Santo Antônio":32,"São Mateus":12,"São Pedro":18,"Teixeiras":15,
+    "Vila Ideal":24,"Vitorino Braga":22
+  },
+  servicos: [
+    { id:1, nome:"Entrega Expressa", preco:35, desc:"Prioritária em até 1h" },
+    { id:2, nome:"Carga Frágil", preco:20, desc:"Manuseio especial" }
+  ]
+};
+let nextId = 100;
+
+// Matriz simulada de distâncias em KM entre os pontos principais de Juiz de Fora para realizar o cálculo dinâmico preciso.
+// Se um par de bairros não estiver explicitamente mapeado aqui, o sistema calcula uma distância padrão estimada de 5km.
+const matrizDistancias = {
+  "Centro": { "Manoel Honório": 5, "Ipiranga": 6, "Benfica": 14, "Cascatinha": 4, "São Mateus": 2 },
+  "Manoel Honório": { "Centro": 5, "Ipiranga": 8, "Benfica": 9, "Cascatinha": 7, "São Mateus": 6 },
+  "Ipiranga": { "Centro": 6, "Manoel Honório": 8, "Benfica": 19, "Cascatinha": 5, "São Mateus": 4 },
+  "Benfica": { "Centro": 14, "Manoel Honório": 9, "Ipiranga": 19, "Cascatinha": 16, "São Mateus": 15 },
+  "Cascatinha": { "Centro": 4, "Manoel Honório": 7, "Ipiranga": 5, "Benfica": 16, "São Mateus": 2 },
+  "São Mateus": { "Centro": 2, "Manoel Honório": 6, "Ipiranga": 4, "Benfica": 15, "Cascatinha": 2 }
+};
+
+function getDistancia(origem, destino) {
+  if (origem === destino) return 0;
+  if (matrizDistancias[origem] && matrizDistancias[origem][destino] !== undefined) {
+    return matrizDistancias[origem][destino];
+  }
+  if (matrizDistancias[destino] && matrizDistancias[destino][origem] !== undefined) {
+    return matrizDistancias[destino][origem];
+  }
+  return 5; // Distância padrão de segurança caso a rota específica não esteja mapeada na matriz
+}
+
+function populateDriversSelect() {
+  const select = document.getElementById('driverLocation');
+  const currentVal = select.value;
+  select.innerHTML = '';
+  Object.keys(state.fretes).sort().forEach(bairro => {
+    const opt = document.createElement('option');
+    opt.value = bairro;
+    opt.textContent = bairro;
+    select.appendChild(opt);
+  });
+  if (currentVal && state.fretes[currentVal]) {
+    select.value = currentVal;
+  } else {
+    select.value = "Centro"; // Valor inicial padrão
+  }
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('fretegoState');
+    if (s) {
+      const p = JSON.parse(s);
+      if (p.fretes) state.fretes = p.fretes;
+      if (p.servicos) state.servicos = p.servicos;
+      if (p.extraFee != null) state.extraFee = p.extraFee;
+    }
+  } catch(e) {}
+}
+function saveState() {
+  try { localStorage.setItem('fretegoState', JSON.stringify({ fretes: state.fretes, servicos: state.servicos, extraFee: state.extraFee })); } catch(e) {}
+}
+
+// ── TUTORIAL ──
+const TUT_TOTAL = 5;
+let tutCurrent = 0;
+const tutLabels = ["Visão geral","Bairros","Serviços","Config","Pronto!"];
+
+function buildTutorial() {
+  const nav = document.getElementById('tutNav');
+  const dotsEl = document.getElementById('tutDots');
+  nav.innerHTML = ''; dotsEl.innerHTML = '';
+  tutLabels.forEach((label, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tut-step-btn' + (i === 0 ? ' active' : '');
+    btn.innerHTML = `<span class="tnum">${i+1}</span>${label}`;
+    btn.onclick = () => tutGoTo(i);
+    nav.appendChild(btn);
+    const d = document.createElement('div');
+    d.className = 'tpd' + (i === 0 ? ' active' : '');
+    d.id = 'tpd-' + i;
+    dotsEl.appendChild(d);
+  });
+}
+function tutGoTo(n) {
+  document.getElementById('tpane-' + tutCurrent).classList.remove('active');
+  document.getElementById('tutNav').children[tutCurrent].classList.remove('active');
+  document.getElementById('tpd-' + tutCurrent).classList.remove('active');
+  tutCurrent = n;
+  document.getElementById('tpane-' + tutCurrent).classList.add('active');
+  document.getElementById('tutNav').children[tutCurrent].classList.add('active');
+  document.getElementById('tpd-' + tutCurrent).classList.add('active');
+  document.getElementById('btnTPrev').style.display = tutCurrent === 0 ? 'none' : 'inline-block';
+  const tn = document.getElementById('btnTNext');
+  if (tutCurrent === TUT_TOTAL - 1) { tn.textContent = '✓ Entendido!'; tn.classList.add('finish'); }
+  else { tn.textContent = 'Próximo →'; tn.classList.remove('finish'); }
+}
+function tutStep(dir) {
+  const n = tutCurrent + dir;
+  if (n >= TUT_TOTAL) { closeTutorial(); return; }
+  if (n < 0) return;
+  tutGoTo(n);
+}
+function openTutorial() {
+  tutCurrent = 0;
+  buildTutorial();
+  document.querySelectorAll('.tut-pane').forEach((p,i) => p.classList.toggle('active', i === 0));
+  document.getElementById('btnTPrev').style.display = 'none';
+  const tn = document.getElementById('btnTNext');
+  tn.textContent = 'Próximo →'; tn.classList.remove('finish');
+  document.getElementById('tutorialOverlay').classList.add('active');
+}
+function closeTutorial() {
+  document.getElementById('tutorialOverlay').classList.remove('active');
+}
+
+// ── AUTH ──
+function toggleAdminAccess() {
+  if (state.isAdmin) { logout(); return; }
+  document.getElementById('loginScreen').classList.add('active');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginErr').style.display = 'none';
+  setTimeout(() => document.getElementById('loginUser').focus(), 100);
+}
+function closeLogin() { document.getElementById('loginScreen').classList.remove('active'); }
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim().toLowerCase();
+  const p = document.getElementById('loginPass').value.trim();
+  if (u === 'claudio' && p === 'souchato') {
+    state.isAdmin = true;
+    closeLogin();
+    
+    // AUTOMAÇÃO EXIGIDA: Ativa automaticamente o toggle de Taxa de Feriado/FDS no Login
+    document.getElementById('weekendToggle').checked = true;
+    
+    document.getElementById('adminPanel').classList.add('active');
+    document.getElementById('adminBadge').style.display = 'inline-block';
+    document.getElementById('adminToggleBtn').textContent = 'Sair Admin';
+    document.getElementById('cfgExtra').value = state.extraFee.toFixed(2);
+    renderAdminTables();
+    refreshResult(); // Força atualização instantânea da interface com a taxa inclusa
+    showToast('Admin Logado! Taxa Feriado/FDS Ativada. 👑');
+    openTutorial();
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+  }
+}
+function logout() {
+  state.isAdmin = false;
+  document.getElementById('adminPanel').classList.remove('active');
+  document.getElementById('adminBadge').style.display = 'none';
+  document.getElementById('adminToggleBtn').textContent = 'Admin';
+  showToast('Sessão encerrada');
+}
+
+// ── TABS ──
+function switchTab(tab) {
+  const tabs = ['fretes','servicos','config'];
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', tabs[i] === tab));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ── SEARCH ──
+function handleSearch() {
+  const val = document.getElementById('searchInput').value.toLowerCase();
+  const sug = document.getElementById('suggestions');
+  sug.innerHTML = '';
+  if (!val) { sug.style.display = 'none'; return; }
+  const matches = Object.keys(state.fretes).filter(b => b.toLowerCase().includes(val));
+  if (matches.length) {
+    sug.style.display = 'block';
+    matches.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'suggestion-item';
+      
+      // Cálculo dinâmico prévio no dropdown de sugestões baseado na Origem do Motorista
+      const motoristaOrigem = document.getElementById('driverLocation').value;
+      const precoPorKm = parseFloat(document.getElementById('pricePerKm').value) || 0;
+      const distanciaKM = getDistancia(motoristaOrigem, m);
+      const custoDeslocamento = distanciaKM * precoPorKm;
+      
+      const taxaFixaDestino = state.fretes[m];
+      const weekend = document.getElementById('weekendToggle').checked;
+      const taxaExtra = weekend ? state.extraFee : 0;
+      
+      const precoFinalAproximado = custoDeslocamento + taxaFixaDestino + taxaExtra;
+      
+      div.innerHTML = `<span class="s-name">${m}</span><span class="s-price">R$ ${precoFinalAproximado.toFixed(2).replace('.',',')}</span>`;
+      div.onclick = () => selectBairro(m);
+      sug.appendChild(div);
+    });
+  } else { sug.style.display = 'none'; }
+}
+function selectBairro(nome) {
+  state.selectedBairro = nome;
+  document.getElementById('searchInput').value = nome;
+  document.getElementById('suggestions').style.display = 'none';
+  refreshResult();
+}
+
+// ── LÓGICA DE CÁLCULO DA ENTREGA FULL REESTRUTURADA ──
+function refreshResult() {
+  updateExtraDisplay();
+  if (!state.selectedBairro || state.fretes[state.selectedBairro] === undefined) return;
+  
+  const motoristaOrigem = document.getElementById('driverLocation').value;
+  const precoPorKm = parseFloat(document.getElementById('pricePerKm').value) || 0;
+  const destinoBairro = state.selectedBairro;
+  
+  // 1. Distância entre a posição atual do motorista e o bairro de Destino
+  const kmDiferenca = getDistancia(motoristaOrigem, destinoBairro);
+  
+  // 2. Multiplicação dos KM pelo valor definido por cada KM de deslocamento
+  const valorDeslocamento = kmDiferenca * precoPorKm;
+  
+  // 3. Taxa fixa configurada para o Bairro de Destino
+  const taxaFixaDestino = state.fretes[destinoBairro];
+  
+  // 4. Verificação se o Gatilho Administrativo de Feriado/FDS está acionado
+  const weekend = document.getElementById('weekendToggle').checked;
+  const taxaExtraFeriado = weekend ? state.extraFee : 0;
+  
+  // 5. Soma Total Final da Entrega FULL
+  const valorFinalEntrega = valorDeslocamento + taxaFixaDestino + taxaExtraFeriado;
+  
+  document.getElementById('rNeighborhood').innerHTML = `Entrega FULL para <b>${destinoBairro}</b>`;
+  document.getElementById('rPrice').textContent = `R$ ${valorFinalEntrega.toFixed(2).replace('.',',')}`;
+  
+  // Exibição detalhada e didática do cálculo para transparência total
+  document.getElementById('rDetails').innerHTML = `
+    Rotas: Motorista em <b>${motoristaOrigem}</b> até <b>${destinoBairro}</b> (${kmDiferenca} km)<br>
+    Cálculo: R$ ${valorDeslocamento.toFixed(2).replace('.',',')} (${kmDiferenca}km x R$ ${precoPorKm.toFixed(2)}) + 
+    R$ ${taxaFixaDestino.toFixed(2).replace('.',',')} (Taxa Fixa do Bairro)
+    ${weekend ? ` + R$ ${taxaExtraFeriado.toFixed(2).replace('.',',')} (Taxa Feriado/FDS)` : ''}
+  `;
+  
+  const tag = document.getElementById('rTag');
+  if (weekend) { tag.textContent = 'Incluso taxa administrativa de feriado/FDS'; tag.className = 'result-tag special'; }
+  else { tag.textContent = 'Preço padrão Entrega FULL'; tag.className = 'result-tag'; }
+  document.getElementById('resultCard').classList.add('active');
+}
+
+function updateExtraDisplay() {
+  document.getElementById('extraDisplay').textContent = `R$ ${state.extraFee.toFixed(2).replace('.',',')}`;
+}
+
+// ── ADMIN FRETES ──
+function saveBairro() {
+  const nome = document.getElementById('fBairro').value.trim();
+  const preco = parseFloat(document.getElementById('fPreco').value);
+  if (!nome || isNaN(preco)) { alert('Preencha o nome e o preço.'); return; }
+  state.fretes[nome] = preco;
+  document.getElementById('fBairro').value = '';
+  document.getElementById('fPreco').value = '';
+  saveState(); populateDriversSelect(); renderAdminTables(); showToast('Bairro salvo! 🏙');
+}
+function deleteBairro(nome) {
+  if (!confirm(`Remover "${nome}"?`)) return;
+  delete state.fretes[nome];
+  if (state.selectedBairro === nome) { state.selectedBairro = null; document.getElementById('resultCard').classList.remove('active'); }
+  saveState(); populateDriversSelect(); renderAdminTables(); showToast('Bairro removido');
+}
+function editBairro(nome) {
+  document.getElementById('fBairro').value = nome;
+  document.getElementById('fPreco').value = state.fretes[nome];
+  switchTab('fretes');
+  document.getElementById('fBairro').focus();
+}
+
+// ── ADMIN SERVIÇOS ──
+function saveServico() {
+  const nome = document.getElementById('sNome').value.trim();
+  const preco = parseFloat(document.getElementById('sPreco').value);
+  const desc = document.getElementById('sDesc').value.trim();
+  if (!nome || isNaN(preco)) { alert('Preencha o nome e o preço.'); return; }
+  state.servicos.push({ id: nextId++, nome, preco, desc });
+  document.getElementById('sNome').value = '';
+  document.getElementById('sPreco').value = '';
+  document.getElementById('sDesc').value = '';
+  saveState(); renderAdminTables(); renderUserServices(); showToast('Serviço adicionado! 📦');
+}
+function deleteServico(id) {
+  state.servicos = state.servicos.filter(s => s.id !== id);
+  saveState(); renderAdminTables(); renderUserServices(); showToast('Serviço removido');
+}
+
+// ── CONFIG ──
+function saveConfig() {
+  const v = parseFloat(document.getElementById('cfgExtra').value);
+  if (isNaN(v)) { alert('Valor inválido.'); return; }
+  state.extraFee = v;
+  saveState(); updateExtraDisplay(); refreshResult(); showToast('Configuração salva! ⚙️');
+}
+
+// ── RENDER ──
+function renderAdminTables() {
+  const tb = document.getElementById('fretesTbody');
+  tb.innerHTML = '';
+  Object.keys(state.fretes).sort().forEach(nome => {
+    const tr = document.createElement('tr');
+    const n = nome.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    tr.innerHTML = `<td>${nome}</td><td class="price-cell">R$ ${state.fretes[nome].toFixed(2).replace('.',',')}</td><td style="text-align:right;white-space:nowrap"><button class="btn-edit" onclick="editBairro('${n}')">✏️</button><button class="btn-delete" onclick="deleteBairro('${n}')">🗑</button></td>`;
+    tb.appendChild(tr);
+  });
+  const sb = document.getElementById('servicosTbody');
+  sb.innerHTML = '';
+  state.servicos.forEach(s => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><b>${s.nome}</b></td><td class="price-cell">R$ ${s.preco.toFixed(2).replace('.',',')}</td><td style="color:var(--muted);font-size:13px">${s.desc}</td><td><button class="btn-delete" onclick="deleteServico(${s.id})">🗑</button></td>`;
+    sb.appendChild(tr);
+  });
+}
+function renderUserServices() {
+  const el = document.getElementById('servicesListUser');
+  el.innerHTML = '';
+  if (!state.servicos.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">Nenhum serviço especial disponível no momento</p>';
+    return;
+  }
+  state.servicos.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'service-user-card';
+    card.innerHTML = `<div><div style="font-size:14px;font-weight:600">${s.nome}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${s.desc}</div></div><div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--gold);flex-shrink:0;margin-left:12px">R$ ${s.preco.toFixed(2).replace('.',',')}</div>`;
+    el.appendChild(card);
+  });
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = '✔ ' + msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('loginScreen').classList.contains('active')) doLogin();
+  if (e.key === 'Escape') {
+    if (document.getElementById('tutorialOverlay').classList.contains('active')) closeTutorial();
+    else if (document.getElementById('loginScreen').classList.contains('active')) closeLogin();
+  }
+});
+
+loadState();
+populateDriversSelect();
+updateExtraDisplay();
+renderUserServices();
+buildTutorial();
+</script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle - Suprema</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #2c3e50; --danger: #e74c3c; --success: #27ae60; --info: #3498db; --warning: #f39c12; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-card { background: white; padding: 40px; border-radius: 10px; width: 100%; max-width: 350px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        #main-content { display: none; }
+        .container { max-width: 1100px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; }
+        .btn-import { background: #8e44ad; margin-bottom: 10px; }
+        .btn-reg { background: var(--success); width: 100%; margin-top: 15px; }
+        .btn-reduce { background: var(--warning); font-size: 11px; padding: 5px 10px; color: #fff; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background: #f8f9fa; color: var(--primary); }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+        .critical { background: var(--danger); color: white; }
+        #lista-sugestoes { border: 1px solid #ddd; border-top: none; max-height: 200px; overflow-y: auto; display: none; background: white; position: absolute; z-index: 100; width: calc(100% - 40px); }
+        .item-sugestao { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .item-sugestao:hover { background: #f8f9fa; }
+        label { display: block; margin-top: 10px; font-weight: bold; color: var(--primary); font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div id="login-screen">
+    <div class="login-card">
+        <h2>🔒 Controle de Autorização Clínica</h2>
+        <input type="text" id="user" placeholder="Usuário">
+        <input type="password" id="pass" placeholder="Senha">
+        <button class="btn" style="background: var(--success); width: 100%; margin-top: 15px;" onclick="autenticar()">Entrar</button>
+        <p id="login-error" style="color:red; display:none; margin-top:10px;">Credenciais inválidas!</p>
+    </div>
+</div>
+
+<div id="main-content" class="container">
+    <div class="card">
+        <h2>🏥 Controle de Autorização Clínica</h2>
+        <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">📥 Importar Lista de Alunos (Excel)</button>
+        <input type="file" id="fileInput" style="display:none" accept=".xlsx" onchange="importarPlanilha(event)">
+    </div>
+
+    <div class="card" style="position: relative;">
+        <h3>Registrar Novo Esquecimento</h3>
+        <input type="text" id="inputBusca" placeholder="Digite o nome do aluno..." onkeyup="filtrarAlunos(this.value)">
+        <div id="lista-sugestoes"></div>
+        
+        <div id="info-selecionado" style="display:none; margin-top:15px; padding:20px; background:#eef2f7; border-radius: 8px; border-left: 5px solid var(--info);">
+            <strong>Estudante:</strong> <span id="txt-nome"></span><br>
+            <strong>Matrícula:</strong> <span id="txt-mat"></span> | <strong>Período:</strong> <span id="txt-per"></span>º<br>
+            
+            <label>Número do Protocolo:</label>
+            <input type="text" id="campo-protocolo" placeholder="Ex: 123456">
+            
+            <label>Data de liberação do protocolo:</label>
+            <input type="date" id="data-protocolo">
+            
+            <label>Observações (opcional):</label>
+            <textarea id="campo-obs" rows="2" placeholder="Digite aqui..."></textarea>
+            
+            <button class="btn btn-reg" id="btn-salvar" onclick="registrarOcorrencia()">Confirmar Registro</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Histórico Detalhado de Esquecimentos</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data de Liberação</th>
+                    <th>Nome</th>
+                    <th>Matrícula</th>
+                    <th>Protocolo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="corpo-tabela">
+                <tr><td colspan="6" style="text-align:center;">Carregando dados...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const users = { "Diana": "246811", "Claus": "Cl@86372" };
+    const URL_API = "https://script.google.com/macros/s/AKfycbx3jT4lZM85c43QTUQ-Jee9rRuTwmVgB6RIIMBvV3iCZUe8BFyrA3wTcty2WwIqwz9olg/exec";
+    const TOKEN_SEGURANCA = "SuaSenhaSecreta123";
+
+    let alunosBase = JSON.parse(localStorage.getItem('base_alunos')) || [];
+    let ocorrencias = [];
+    let selecionado = null;
+
+    function autenticar() {
+        const u = document.getElementById('user').value.trim();
+        const s = document.getElementById('pass').value.trim();
+        if (users[u] === s) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            carregarDados();
+        } else { document.getElementById('login-error').style.display = 'block'; }
+    }
+
+    function filtrarAlunos(t) {
+        const lista = document.getElementById('lista-sugestoes');
+        if (t.length < 2) { lista.style.display = 'none'; return; }
+        const f = alunosBase.filter(a => a.nome && a.nome.toLowerCase().includes(t.toLowerCase())).slice(0, 5);
+        if(f.length > 0) {
+            lista.innerHTML = f.map(a => `<div class="item-sugestao" onclick="selecionarAluno('${a.nome}', '${a.periodo}', '${a.matricula}')">${a.nome} (${a.matricula})</div>`).join('');
+            lista.style.display = 'block';
+        } else { lista.style.display = 'none'; }
+    }
+
+    function selecionarAluno(n, p, m) {
+        selecionado = { nome: n, periodo: p, matricula: m };
+        document.getElementById('txt-nome').innerText = n;
+        document.getElementById('txt-mat').innerText = m;
+        document.getElementById('txt-per').innerText = p;
+        document.getElementById('info-selecionado').style.display = 'block';
+        document.getElementById('lista-sugestoes').style.display = 'none';
+        document.getElementById('inputBusca').value = n;
+        const hoje = new Date().toISOString().split('T')[0];
+        document.getElementById('data-protocolo').value = hoje;
+    }
+
+    async function registrarOcorrencia() {
+        const btn = document.getElementById('btn-salvar');
+        const prot = document.getElementById('campo-protocolo').value;
+        const dataManual = document.getElementById('data-protocolo').value;
+        if(!prot || !dataManual) { alert("Informe o protocolo e a data!"); return; }
+
+        const partesData = dataManual.split('-');
+        const dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
+        const horaAtual = new Date().toLocaleTimeString('pt-BR');
+        const dataHoraCompleta = `${dataFormatada}, ${horaAtual}`;
+
+        const payload = { 
+            token: TOKEN_SEGURANCA,
+            nome: selecionado.nome, periodo: selecionado.periodo, matricula: selecionado.matricula, 
+            data: dataHoraCompleta, protocolo: prot, 
+            observacao: document.getElementById('campo-obs').value 
+        };
+
+        btn.disabled = true;
+        try {
+            await fetch(URL_API, { method: 'POST', body: JSON.stringify(payload) });
+            alert("Salvo com sucesso!");
+            location.reload();
+        } catch (e) { alert("Erro ao salvar."); btn.disabled = false; }
+    }
+
+    async function reduzirOcorrencia(nome, matricula) {
+        if (!confirm(`Deseja EXCLUIR este registro?`)) return;
+        const payload = { token: TOKEN_SEGURANCA, nome: nome, matricula: matricula, protocolo: "ESTORNO" };
+        try {
+            const res = await fetch(URL_API, { method: 'POST', body: JSON.stringify(payload) });
+            const text = await res.text();
+            if(text.includes("Sucesso")) { location.reload(); } else { alert(text); }
+        } catch (e) { alert("Erro na conexão."); }
+    }
+
+    async function carregarDados() {
+        try {
+            const res = await fetch(URL_API);
+            const rawData = await res.json();
+            
+            // NORMALIZAÇÃO DE DADOS: Garante que as chaves da planilha sejam lidas corretamente
+            ocorrencias = rawData.map(obj => {
+                const novoObj = {};
+                for (let key in obj) {
+                    const cleanKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                    novoObj[cleanKey] = obj[key];
+                }
+                return novoObj;
+            });
+
+            renderizarDashboard();
+        } catch (e) {
+            document.getElementById('corpo-tabela').innerHTML = '<tr><td colspan="6" style="color:red">Erro ao carregar dados.</td></tr>';
+        }
+    }
+
+    function renderizarDashboard() {
+        const corpo = document.getElementById('corpo-tabela');
+        corpo.innerHTML = '';
+        
+        const contagem = {};
+        ocorrencias.forEach(o => {
+            const mat = o.matricula;
+            if(mat) contagem[mat] = (contagem[mat] || 0) + 1;
+        });
+
+        [...ocorrencias].reverse().forEach(o => {
+            const mat = o.matricula || "---";
+            const nome = o.nome || "---";
+            const prot = o.protocolo || "---";
+            let dataLib = o.data || "---";
+            const totalDoAluno = contagem[mat] || 0;
+            const critico = totalDoAluno >= 3;
+
+            if (dataLib && typeof dataLib === "string" && dataLib.includes('T')) {
+                const d = new Date(dataLib);
+                if (!isNaN(d)) {
+                    dataLib = d.toLocaleDateString('pt-BR') + ', ' + d.toLocaleTimeString('pt-BR');
+                }
+            }
+
+            corpo.innerHTML += `<tr>
+                <td><strong>${dataLib}</strong></td>
+                <td>${nome}</td>
+                <td>${mat}</td>
+                <td>${prot}</td>
+                <td><span class="status-badge ${critico?'critical':''}">${critico?'ADVERTÊNCIA':'Normal'}</span></td>
+                <td>
+                    <button class="btn btn-reduce" onclick="reduzirOcorrencia('${nome}', '${mat}')">➖ Excluir</button>
+                </td>
+            </tr>`;
+        });
+
+        if (ocorrencias.length === 0) {
+            corpo.innerHTML = '<tr><td colspan="6" style="text-align:center;">Nenhum registro encontrado.</td></tr>';
+        }
+    }
+
+    function importarPlanilha(event) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            alunosBase = json.map(i => {
+                let temp = {};
+                Object.keys(i).forEach(k => {
+                   let c = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                   temp[c] = i[k];
+                });
+                let p = "0";
+                for(let k in temp) { if(k.startsWith("per")) { p = temp[k]; break; } }
+                return { nome: temp.nome, matricula: temp.matricula, periodo: p };
+            });
+            localStorage.setItem('base_alunos', JSON.stringify(alunosBase));
+            alert("Lista carregada!");
+        };
+        reader.readAsArrayBuffer(event.target.files[0]);
+    }
+</script>
+</body>
+</html>

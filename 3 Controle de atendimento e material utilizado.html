@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SisOdonto — Controle de Atendimentos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --brand:#0d6efd; --brand-dark:#0a4fbf; --brand-light:#e8f1ff;
+            --teal:#0097a7; --teal-light:#e0f7fa;
+            --green:#2e7d32; --green-light:#e8f5e9;
+            --red:#c62828; --red-light:#ffebee;
+            --amber:#e65100; --amber-light:#fff3e0;
+            --gray-50:#f8fafc; --gray-100:#f1f5f9; --gray-200:#e2e8f0;
+            --gray-400:#94a3b8; --gray-600:#475569; --gray-800:#1e293b;
+            --white:#ffffff; --radius:8px;
+            --shadow-sm:0 1px 3px rgba(0,0,0,.08);
+            --shadow:0 4px 16px rgba(0,0,0,.10);
+            --shadow-lg:0 8px 32px rgba(0,0,0,.15);
+        }
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html,body{height:100%}
+        body{font-family:'Segoe UI',system-ui,sans-serif;font-size:15px;background:var(--gray-100);color:var(--gray-800)}
+        .app-wrapper{max-width:1100px;margin:0 auto;padding:0 16px 40px}
+        .hidden{display:none!important}
+
+        /* Topbar */
+        .topbar{background:linear-gradient(135deg,#0d6efd 0%,#0a4fbf 60%,#0097a7 100%);color:white;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:64px;box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
+        .topbar-brand{display:flex;align-items:center;gap:12px}
+        .topbar-brand .logo-icon{width:38px;height:38px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px}
+        .topbar-brand h1{font-size:1.1rem;font-weight:700}
+        .topbar-brand small{font-size:.75rem;opacity:.8;display:block;margin-top:1px}
+        .topbar-actions{display:flex;align-items:center;gap:8px}
+        .topbar-user{background:rgba(255,255,255,.15);border-radius:20px;padding:4px 12px;font-size:.85rem;display:flex;align-items:center;gap:6px}
+        .session-timer{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:4px 12px;font-size:.78rem;display:flex;align-items:center;gap:5px}
+        .session-timer.warning{background:rgba(239,68,68,.3);border-color:rgba(239,68,68,.5)}
+
+        /* Buttons */
+        button{cursor:pointer;border:none;border-radius:var(--radius);font-weight:600;transition:all .2s}
+        .btn{padding:10px 18px;font-size:.88rem;display:inline-flex;align-items:center;gap:6px}
+        .btn-primary{background:var(--brand);color:white}.btn-primary:hover{background:var(--brand-dark)}
+        .btn-success{background:var(--green);color:white}.btn-success:hover{background:#1b5e20}
+        .btn-danger{background:var(--red);color:white}.btn-danger:hover{background:#b71c1c}
+        .btn-amber{background:var(--amber);color:white}.btn-amber:hover{background:#bf360c}
+        .btn-teal{background:var(--teal);color:white}.btn-teal:hover{background:#00838f}
+        .btn-outline{background:transparent;color:var(--brand);border:2px solid var(--brand)}.btn-outline:hover{background:var(--brand-light)}
+        .btn-ghost{background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.3);padding:7px 14px;font-size:.82rem}.btn-ghost:hover{background:rgba(255,255,255,.25)}
+        .btn-sm{padding:6px 12px;font-size:.8rem}
+        .btn-full{width:100%;justify-content:center;padding:14px;font-size:1rem}
+
+        /* Cards */
+        .card{background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:var(--shadow-sm)}
+        .card-header{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid var(--gray-100)}
+        .card-header .icon-circle{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+        .card-header h3{font-size:1.05rem;color:var(--gray-800)}
+        .card-header p{font-size:.82rem;color:var(--gray-600);margin-top:2px}
+
+        /* Menu Colapsável */
+        .card-collapsible { padding: 0; overflow: hidden; }
+        .card-collapsible-trigger { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; cursor: pointer; user-select: none; background: var(--white); transition: background 0.2s; }
+        .card-collapsible-trigger:hover { background: var(--gray-50); }
+        .card-collapsible-trigger .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .card-collapsible-content { padding: 0 24px 24px 24px; border-top: 1px solid var(--gray-100); }
+        .indicator-arrow { font-size: 1.2rem; color: var(--gray-400); transition: transform 0.2s; }
+        .card-collapsible.active .indicator-arrow { transform: rotate(180deg); }
+
+        /* Form */
+        .field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:200px;position:relative;}
+        .field label{font-size:.82rem;font-weight:600;color:var(--gray-600);text-transform:uppercase;letter-spacing:.4px}
+        .field label .req{color:var(--red);margin-left:2px}
+        .field input,.field select,.field textarea{padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-size:.92rem;background:var(--white);color:var(--gray-800);transition:border-color .2s,box-shadow .2s;width:100%}
+        .field input.error,.field select.error{border-color:var(--red);box-shadow:0 0 0 3px rgba(198,40,40,.1)}
+        .field .field-error{font-size:.78rem;color:var(--red);margin-top:3px;display:none}
+        .field input.error~.field-error,.field select.error~.field-error{display:block}
+        .row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+
+        /* Autocomplete Suggestions */
+        .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius); max-height: 200px; overflow-y: auto; z-index: 999; box-shadow: var(--shadow); list-style: none; }
+        .suggestions-list li { padding: 10px 12px; cursor: pointer; font-size: 0.9rem; }
+        .suggestions-list li:hover { background: var(--brand-light); color: var(--brand-dark); }
+
+        /* Material List Tags */
+        .materials-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding: 10px; background: var(--gray-50); border: 1px dashed var(--gray-200); border-radius: var(--radius); min-height: 50px; }
+        .material-tag { display: inline-flex; align-items: center; gap: 8px; background: var(--gray-200); color: var(--gray-800); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .material-tag .remove-btn { cursor: pointer; color: var(--red); font-weight: bold; font-size: 1rem; }
+
+        /* Auth */
+        #auth-section{max-width:420px;margin:80px auto;background:var(--white);border-radius:16px;box-shadow:var(--shadow-lg);overflow:hidden}
+        .auth-header{background:linear-gradient(135deg,#0d6efd,#0a4fbf,#0097a7);padding:32px 32px 24px;text-align:center;color:white}
+        .auth-header .auth-logo{font-size:3rem;margin-bottom:8px}
+        .auth-header h2{font-size:1.3rem;margin-bottom:4px}
+        .auth-header p{font-size:.85rem;opacity:.85}
+        .auth-body{padding:28px 32px 32px}
+        .auth-body .field{margin-bottom:14px}
+
+        /* Procedure grid */
+        .proc-search-bar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+        .proc-counter{display:inline-flex;align-items:center;gap:6px;background:var(--brand-light);color:var(--brand-dark);border-radius:20px;padding:4px 12px;font-size:.82rem;font-weight:600;margin-bottom:10px}
+        .treatment-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;max-height:32vh;overflow-y:auto;border:1.5px solid var(--gray-200);padding:12px;background:var(--gray-50);border-radius:var(--radius)}
+        .treatment-item{padding:9px 10px;background:var(--white);border:1.5px solid var(--gray-200);border-radius:6px;display:flex;flex-direction:column;gap:4px;transition:border-color .15s,background .15s}
+        .treatment-item:hover{border-color:var(--brand)}
+        .treatment-item.selected{border-color:var(--brand);background:var(--brand-light)}
+        .treatment-item label{font-size:.85rem;display:flex;align-items:center;gap:7px;cursor:pointer}
+        .treatment-item input[type="checkbox"]{accent-color:var(--brand);width:15px;height:15px;flex-shrink:0}
+        .proc-date-input{font-size:.8rem;padding:5px 8px;border:1px solid var(--gray-200);border-radius:5px;display:none;margin-top:3px;width:100%}
+        .treatment-item.selected .proc-date-input{display:block}
+
+        /* Table */
+        .table-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:.88rem}
+        th{background:#0d6efd;color:white;padding:11px 14px;text-align:left;font-weight:600;font-size:.82rem;letter-spacing:.3px}
+        th:first-child{border-radius:8px 0 0 0}th:last-child{border-radius:0 8px 0 0}
+        td{padding:11px 14px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+        tr:hover td{background:var(--gray-50)}
+
+        .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700}
+        .badge-urgencia{background:var(--red-light);color:var(--red)}
+        .badge-atend{background:var(--green-light);color:var(--green)}
+
+        .section-intro{background:var(--brand-light);border-left:4px solid var(--brand);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin-bottom:20px;font-size:.88rem;color:var(--brand-dark)}
+        .section-intro strong{display:block;font-size:.95rem;margin-bottom:3px}
+
+        /* Stats */
+        .stats-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+        .stat-chip{flex:1;min-width:140px;background:linear-gradient(135deg,var(--brand) 0%,var(--teal) 100%);color:white;border-radius:12px;padding:18px 20px;text-align:center}
+        .stat-chip .stat-label{font-size:.78rem;opacity:.85;text-transform:uppercase;letter-spacing:.5px}
+        .stat-chip .stat-value{font-size:2rem;font-weight:700;margin-top:4px}
+
+        .page-header{display:flex;align-items:center;justify-content:space-between;margin:24px 0 20px;flex-wrap:wrap;gap:10px}
+        .page-header h2{font-size:1.15rem;color:var(--gray-800);display:flex;align-items:center;gap:8px}
+
+        .divider{height:1px;background:var(--gray-200);margin:24px 0}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(46,125,50,.4)}50%{box-shadow:0 0 0 8px rgba(46,125,50,0)}}
+        .btn-save{animation:pulse 2.5s infinite}
+
+        /* TELA DE BLOQUEIO */
+        #lock-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0a4fbf,#0097a7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
+        .lock-box{background:white;border-radius:20px;padding:40px 36px;max-width:400px;width:100%;text-align:center;box-shadow:var(--shadow-lg)}
+        .lock-box .lock-icon{font-size:3.5rem;margin-bottom:12px}
+        .lock-box h2{color:var(--gray-800);margin-bottom:6px;font-size:1.2rem}
+        .lock-box p{color:var(--gray-600);font-size:.88rem;margin-bottom:22px}
+        .lock-box .field{margin-bottom:14px;text-align:left}
+        .lock-error{color:var(--red);font-size:.82rem;margin-top:8px;min-height:18px}
+
+        /* MODAIS */
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+        .modal-box{background:var(--white);border-radius:16px;max-width:780px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+        .modal-header{background:linear-gradient(135deg,#0d6efd,#0097a7);color:white;padding:24px 28px 20px;border-radius:16px 16px 0 0;position:sticky;top:0}
+        .modal-header h2{font-size:1.2rem;margin-bottom:4px}
+        .modal-close{position:absolute;top:16px;right:20px;background:rgba(255,255,255,.2);border:none;color:white;width:30px;height:30px;border-radius:50%;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+        .modal-close:hover{background:rgba(255,255,255,.35)}
+        .modal-body{padding:24px 28px}
+
+        .relatorio-header{background:linear-gradient(135deg,#0d6efd,#0097a7);color:white;padding:24px 28px 20px;border-radius:16px 16px 0 0;position:sticky;top:0;z-index:1}
+        .relatorio-paciente-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+        .rel-proc-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+        .rel-proc-tag{background:var(--teal-light);color:var(--teal);border-radius:20px;padding:4px 12px;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:5px}
+        .extra-proc-wrapper {background:var(--gray-100);border:1px dashed var(--brand);border-radius:var(--radius);padding:14px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+        .btn-clone-proc {background:var(--brand-light);color:var(--brand);border:1px solid var(--brand);padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:bold;margin-left:8px;}
+        .btn-clone-proc:hover {background:var(--brand);color:white;}
+    </style>
+</head>
+<body>
+    
+<div id="alerta-coordenador-container" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: var(--gray-800, #1e293b); color: var(--white, #ffffff); padding: 25px; border-radius: 8px; max-width: 450px; width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid var(--brand, #0d6efd); text-align: center; font-family: sans-serif;">
+        <div style="font-size: 2rem; color: #ffca28; margin-bottom: 15px;">📢</div>
+        <h3 style="margin-top: 0; margin-bottom: 15px; color: var(--white, #ffffff); font-size: 1.25rem;">Aviso da Coordenação</h3>
+        <p id="txt-lembrete-exibicao" style="font-size: 0.95rem; line-height: 1.5; color: var(--gray-200, #e2e8f0); margin-bottom: 20px; white-space: pre-wrap;"></p>
+        <button id="btn-ciente-alerta" style="background: var(--brand, #0d6efd); color: #fff; border: none; padding: 10px 25px; font-size: 0.95rem; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.2s; width: 100%;">Estou ciente</button>
+    </div>
+</div>
+
+<div id="auth-section">
+    <div class="auth-header">
+        <div class="auth-logo">🦷</div>
+        <h2>SisOdonto</h2>
+        <p>Sistema de Controle de Atendimentos de Residentes</p>
+    </div>
+    <div class="auth-body">
+        <div class="field"><label>Usuário</label><input type="text" id="login-user" placeholder="Digite seu nome de usuário"></div>
+        <div class="field"><label>Senha</label><input type="password" id="login-pass" placeholder="Digite sua senha" onkeydown="if(event.key==='Enter')handleLogin()"></div>
+        <button onclick="handleLogin()" class="btn btn-primary btn-full" style="margin-top:18px;">🔐 Entrar no Sistema</button>
+    </div>
+</div>
+
+<div id="app-section" class="hidden">
+    <div class="topbar">
+        <div class="topbar-brand">
+            <div class="logo-icon">🦷</div>
+            <div><h1>SisOdonto</h1><small>Controle de Atendimentos</small></div>
+        </div>
+        <div class="topbar-actions">
+            <div class="session-timer" id="session-timer-display">⏱ --:--</div>
+            <div class="topbar-user">👤 <span id="display-user"></span></div>
+            <button onclick="logoutManual()" class="btn-ghost" style="border-radius:6px;">🚪 Sair</button>
+        </div>
+    </div>
+
+    <div class="app-wrapper">
+
+        <div id="admin-menu" class="hidden">
+            <div class="page-header"><h2>📊 Painel de Produção</h2></div>
+
+            <div class="card" style="border: 1.5px solid var(--amber);">
+                <div class="card-header">
+                    <div class="icon-circle" style="background:var(--amber-light)">📢</div>
+                    <div><h3>Central de Lembretes para os Residentes</h3><p>O texto digitado aqui aparecerá na tela do residente assim que ele fizer o login.</p></div>
+                </div>
+                <div class="field" style="margin-bottom: 12px;">
+                    <label>Texto do Lembrete / Recado</label>
+                    <textarea id="admin-txt-lembrete" rows="3" placeholder="Ex: Prezado residente..." style="resize: vertical; font-family: inherit;"></textarea>
+                </div>
+                <button onclick="salvarLembreteAdmin()" class="btn btn-amber">📢 Lançar Lembrete Geral</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-circle" style="background:#e8f1ff">📈</div>
+                    <div><h3>Visão Geral dos Residentes</h3><p>Produção total registrada no sistema</p></div>
+                </div>
+                <div class="stats-row">
+                    <div class="stat-chip"><div class="stat-label">Atendimentos</div><div class="stat-value" id="stat-total-atend">0</div></div>
+                    <div class="stat-chip"><div class="stat-label">Procedimentos</div><div class="stat-value" id="stat-total-proc">0</div></div>
+                </div>
+                <canvas id="chartRanking" style="max-height:340px"></canvas>
+                <button onclick="exportToExcel()" class="btn btn-primary btn-full" style="margin-top:18px">📥 Exportar Relatório Geral para Excel</button>
+            </div>
+
+            <div class="card card-collapsible" id="collapse-materiais">
+                <div class="card-collapsible-trigger" onclick="toggleSection('collapse-materiais'); carregarFiltrosMateriaisAdmin();">
+                    <div class="card-header">
+                        <div class="icon-circle" style="background:var(--teal-light)">📦</div>
+                        <div>
+                            <h3>Relatório de Consumo de Insumos</h3>
+                            <p>Consulte e extraia o total de materiais utilizados por cada residente</p>
+                        </div>
+                    </div>
+                    <div class="indicator-arrow">▼</div>
+                </div>
+                <div class="card-collapsible-content hidden">
+                    <div class="row" style="align-items: flex-end; margin-top: 15px;">
+                        <div class="field">
+                            <label>Filtrar por Residente</label>
+                            <select id="admin-filtro-residente" onchange="gerarRelatorioMateriaisAdmin()">
+                                <option value="">-- Todos os Residentes --</option>
+                            </select>
+                        </div>
+                        <button onclick="exportarMateriaisExcel()" class="btn btn-teal">📥 Exportar Insumos (Excel)</button>
+                    </div>
+                    <div class="table-wrap" style="margin-top: 15px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Residente</th>
+                                    <th>Material / Insumo</th>
+                                    <th>Qtd. Total Utilizada</th>
+                                    <th>Pacientes Atendidos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="body-admin-materiais">
+                                <tr><td colspan="4" style="text-align: center;">Selecione um filtro ou residente para computar.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-collapsible" id="collapse-gerenciamento">
+                <div class="card-collapsible-trigger" onclick="toggleSection('collapse-gerenciamento')">
+                    <div class="card-header">
+                        <div class="icon-circle" style="background:#e8f1ff">✏️</div>
+                        <div><h3>Gerenciamento de Atendimentos</h3><p>Modifique ou corrigia registros lançados pelos residentes</p></div>
+                    </div>
+                    <div class="indicator-arrow">▼</div>
+                </div>
+                <div class="card-collapsible-content hidden">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Residente</th>
+                                    <th>Paciente</th>
+                                    <th>CPF</th>
+                                    <th>Tipo</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="body-admin-atendimentos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-collapsible" id="collapse-auditoria">
+                <div class="card-collapsible-trigger" onclick="toggleSection('collapse-auditoria')">
+                    <div class="card-header">
+                        <div class="icon-circle" style="background:#fff3e0">🔍</div>
+                        <div><h3>Log de Auditoria — LGPD</h3><p>Registro de todos os acessos e ações no sistema</p></div>
+                    </div>
+                    <div class="indicator-arrow">▼</div>
+                </div>
+                <div class="card-collapsible-content hidden">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Usuário</th>
+                                    <th>Ação</th>
+                                    <th>Detalhe</th>
+                                    <th>IP/Dispositivo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="body-log"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="residente-menu" class="hidden">
+            <div class="page-header"><h2>🦷 Registrar Atendimento</h2></div>
+
+            <div class="section-intro">
+                <strong>📋 Instruções rápidas</strong>
+                Use este formulário para registrar cada sessão com seu paciente e os materiais de consumo utilizados do estoque base.
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-circle" style="background:#e8f1ff">👤</div>
+                    <div><h3>Novo Atendimento</h3><p>Preencha todos os dados do paciente</p></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label>Nome do Paciente <span class="req">*</span></label><input type="text" id="p-nome" placeholder="Nome completo"></div>
+                    <div class="field"><label>CPF <span class="req">*</span></label><input type="text" id="p-cpf" maxlength="11" placeholder="Somente números"></div>
+                    <div class="field"><label>Telefone <span class="req">*</span></label><input type="text" id="p-tel" placeholder="00 0 0000-0000"></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label>Data de Início <span class="req">*</span></label><input type="date" id="p-data-ini"></div>
+                    <div class="field"><label>Data de Fim</label><input type="date" id="p-data-fim"></div>
+                    <div class="field">
+                        <label>Tipo de Atendimento <span class="req">*</span></label>
+                        <select id="p-tipo">
+                            <option value="Atendimento">🦷 Atendimento (Acompanhamento)</option>
+                            <option value="Urgência">🚨 Urgência</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="field" style="max-width:300px">
+                        <label>Status do Paciente <span class="req">*</span></label>
+                        <select id="p-status">
+                            <option value="Em Atendimento">🔄 Em Atendimento</option>
+                            <option value="Alta">✅ Alta</option>
+                            <option value="Desistência">❌ Desistência</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="card-header" style="border-bottom:none;margin-bottom:10px;padding-bottom:0">
+                    <div class="icon-circle" style="background:#e0f7fa">🔬</div>
+                    <div><h3>Procedimentos Realizados <span class="req">*</span></h3><p>Selecione e informe a data de cada procedimento</p></div>
+                </div>
+                
+                <div class="proc-search-bar">
+                    <input type="text" id="search-proc" placeholder="🔍  Buscar procedimento..." onkeyup="filterProcedures()" style="padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:8px;flex:1;min-width:200px">
+                    <button type="button" onclick="toggleAreaProcedimentoExtra()" class="btn btn-teal" title="Adicionar procedimento extra não listado">➕ Procedimento Extra</button>
+                </div>
+
+                <div id="wrapper-proc-extra" class="extra-proc-wrapper hidden">
+                    <div class="field" style="min-width:250px;">
+                        <label>Nome do Procedimento Extra</label>
+                        <input type="text" id="extra-proc-nome" placeholder="Digite o nome do procedimento...">
+                    </div>
+                    <div class="field" style="max-width:180px;">
+                        <label>Data da Realização</label>
+                        <input type="date" id="extra-proc-data">
+                    </div>
+                    <button type="button" onclick="incluirProcedimentoExtraLista()" class="btn btn-success" style="height:42px;">Inserir</button>
+                </div>
+
+                <div class="proc-counter" id="proc-counter">📋 0 procedimento(s) selecionado(s)</div>
+                <div class="treatment-grid" id="lista-procedimentos"></div>
+
+                <div class="divider"></div>
+                <div class="card-header" style="border-bottom:none;margin-bottom:10px;padding-bottom:0">
+                    <div class="icon-circle" style="background:var(--amber-light)">📦</div>
+                    <div><h3>Insumos e Materiais Utilizados</h3><p>Busque na planilha base e informe a quantidade consumida nesta sessão</p></div>
+                </div>
+                
+                <div class="row" style="align-items: flex-end; position: relative;">
+                    <div class="field" style="max-width: 60%;">
+                        <label>Buscar Material (Planilha Base)</label>
+                        <input type="text" id="input-busca-material" placeholder="Digite o nome do item..." oninput="filtrarMateriaisAutocomplete(this)">
+                        <ul id="lista-sugestoes-materiais" class="suggestions-list hidden"></ul>
+                    </div>
+                    <div class="field" style="max-width: 150px;">
+                        <label>Quantidade</label>
+                        <input type="number" id="input-qtd-material" value="1" min="1">
+                    </div>
+                    <button type="button" onclick="adicionarMaterialLista()" class="btn btn-amber" style="height: 42px;">➕ Adicionar</button>
+                </div>
+                
+                <div class="materials-container" id="container-materiais-escolhidos">
+                    </div>
+
+                <button onclick="registrarAtendimento()" class="btn btn-success btn-full btn-save" style="margin-top:24px;font-size:1.05rem;height:50px">💾 Salvar Atendimento Completo</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-circle" style="background:#e8f5e9">📋</div>
+                    <div><h3>Meus Pacientes Cadastrados</h3><p>Lista de atendimentos vinculados ao seu perfil</p></div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Paciente</th>
+                                <th>CPF</th>
+                                <th>Início</th>
+                                <th>Tipo</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="body-meus-pacientes"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="admin-edit-modal" class="modal-overlay hidden" onclick="fecharModalFora(event,'admin-edit-modal')">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 id="edit-modal-title">✏️ Corrigir Registro de Atendimento</h2>
+            <button class="modal-close" onclick="fecharModal('admin-edit-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="edit-atend-id">
+            <div class="row">
+                <div class="field"><label>Nome do Paciente</label><input type="text" id="edit-p-nome"></div>
+                <div class="field"><label>CPF</label><input type="text" id="edit-p-cpf" maxlength="11"></div>
+                <div class="field"><label>Telefone</label><input type="text" id="edit-p-tel"></div>
+            </div>
+            <div class="row">
+                <div class="field"><label>Data de Início</label><input type="date" id="edit-p-data-ini"></div>
+                <div class="field"><label>Data de Fim</label><input type="date" id="edit-p-data-fim"></div>
+                <div class="field">
+                    <label>Tipo de Atendimento</label>
+                    <select id="edit-p-tipo">
+                        <option value="Atendimento">🦷 Atendimento (Acompanhamento)</option>
+                        <option value="Urgência">🚨 Urgência</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="field" style="max-width:300px"><label>Status do Paciente</label>
+                    <select id="edit-p-status">
+                        <option value="Em Atendimento">🔄 Em Atendimento</option>
+                        <option value="Alta">✅ Alta</option>
+                        <option value="Desistência">❌ Desistência</option>
+                    </select>
+                </div>
+            </div>
+            <div class="divider"></div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="margin: 0;">Procedimentos Vinculados</h4>
+                <button type="button" onclick="toggleAreaProcedimentoExtraEdicao()" class="btn btn-teal btn-sm">➕ Procedimento Extra</button>
+            </div>
+
+            <div id="wrapper-proc-extra-edicao" class="extra-proc-wrapper hidden" style="margin-bottom: 16px;">
+                <div class="field" style="min-width:250px;"><label>Nome do Procedimento Extra</label><input type="text" id="extra-proc-nome-edicao" placeholder="Digite o nome..."></div>
+                <div class="field" style="max-width:180px;"><label>Data da Realização</label><input type="date" id="extra-proc-data-edicao"></div>
+                <button type="button" onclick="incluirProcedimentoExtraEdicaoLista()" class="btn btn-success" style="height:42px;">Inserir</button>
+            </div>
+
+            <div id="edit-procs-container" style="max-height:180px; overflow-y:auto; border:1px solid var(--gray-200); padding:10px; background:var(--gray-50); border-radius:6px; margin-bottom:15px;"></div>
+            
+            <div style="margin-bottom: 10px;"><h4>Materiais / Insumos Utilizados</h4></div>
+            <div class="row" style="align-items: flex-end; position: relative;">
+                <div class="field" style="max-width: 60%;">
+                    <input type="text" id="edit-busca-material" placeholder="Adicionar outro material..." oninput="filtrarMateriaisAutocompleteEdicao(this)">
+                    <ul id="edit-sugestoes-materiais" class="suggestions-list hidden"></ul>
+                </div>
+                <div class="field" style="max-width: 100px;"><input type="number" id="edit-qtd-material" value="1" min="1"></div>
+                <button type="button" onclick="adicionarMaterialListaEdicao()" class="btn btn-amber btn-sm" style="height: 38px;">➕ Inserir</button>
+            </div>
+            <div class="materials-container" id="edit-container-materials" style="margin-bottom: 20px;"></div>
+
+            <button onclick="salvarAlteracaoSistema()" class="btn btn-success btn-full" style="margin-top:20px;">💾 Salvar Alterações e Confirmar Dados</button>
+        </div>
+    </div>
+</div>
+
+<div id="relatorio-modal" class="modal-overlay hidden" onclick="fecharModalFora(event,'relatorio-modal')">
+    <div class="modal-box">
+        <div class="relatorio-header" style="position:relative">
+            <h2>Ficha Clínica do Paciente</h2>
+            <button class="modal-close" onclick="fecharModal('relatorio-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="relatorio-paciente-info" id="rel-paciente-info"></div>
+            <div id="rel-corpo"></div>
+            <div id="rel-materiais-corpo" style="margin-top:20px;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="lock-screen" class="hidden">
+    <div class="lock-box">
+        <div class="lock-icon">🔒</div>
+        <h2>Sessão Suspensa</h2>
+        <div class="field"><label>Sua Senha</label><input type="password" id="lock-pass" onkeydown="if(event.key==='Enter')desbloquearSessao()"></div>
+        <div id="lock-error" class="lock-error"></div>
+        <button onclick="desbloquearSessao()" class="btn btn-primary btn-full" style="margin-top:10px">🔓 Desbloquear</button>
+    </div>
+</div>
+
+<script>
+    const CHAVE_MESTRA = "MINHA_CHAVE_ODONTO_2024";
+    const STORAGE_KEY = 'odonto_v11_crypto';
+    const INDEXED_DB_NAME = 'OdontoLocalDB';
+    const INDEXED_DB_VER = 1;
+    const STORE_NAME = 'sistema_data';
+    const TIMEOUT_MIN = 3;
+    
+    const PROCEDIMENTOS_BASE = ["Ajuste Oclusal","Acompanhamento Pós-Operatório","Amálgama (Troca / Remoção)","Avaliação Clinical","Avaliação Endodôntica","Avaliação Protética","Canal (Tratamento Endodôntico)","Clareamento","Confecção de Coroa","Confecção de Pino","Confecção de PPR","Confecção de PT","Dessensibilização","DTM","Exodontia (Extração)","Faceta","Fratura Dentária","Implante","Lesão Cervical","Lesão Cariosas","Limpeza","Onlay","Ortodontia","Pino de Fibra","Placa de Bruxismo","Polimento","Ponte Fixa","Profilaxia","Prótese Fixa","Raspagem","Restauração Resina","Selante","Tratamento Ortodôntico","Urgência Dor Aguda","Urgência Trauma"];
+    
+    // MATERIAIS CADASTRADOS DA PLANILHA BASE
+    const MATERIAIS_BASE = ["ABAIXADOR DE LINGUA C/ 100 UN",
+"ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 60 - CLÁSSICO",
+"ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 62 - CLÁSSICO",
+"ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 65 - CLÁSSICO",
+"ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 66 - CLÁSSICO",
+"ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 69 - CLÁSSICO",
+"ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 62 - CLÁSSICO",
+"ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 65 - CLÁSSICO",
+"ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 66 - CLÁSSICO",
+"ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 69 - CLÁSSICO",
+"ACRILICA AUTO POLIMERIZANTE PO 25 G COR VERMELHO - DENCRILAY",
+"ACRILICO AUTO POLIMERIZANTE COR ROSA 220G JET - CLASSICO",
+"ACRILICO AUTO POLIMERIZANTE COR ROSA 78G JET - CLASSICO",
+"ADESIVO AMBAR UNIVERSAL APS 5ML - FGM",
+"ADESIVO MAGIC BOND ESMALTE 5ML - VIGODENT",
+"ADESIVO PARA MOLDEIRA UNIVERSAL TRAY 10 ML - ZHERMACK",
+"ADESIVO PARA MOLDEIRA UNIVERSAL TRAY 14 ML COMPOUND - BOSWORTH",
+"ADESIVO SINGLE BOND UNIVERSAL 3 ML - 3M",
+"ADESIVO SINGLE BOND UNIVERSAL 5 ML - 3M",
+"AGENTE DE UNIÃO SILANO PROSIL - FGM",
+"AGENTE DE UNIÃO SILANO PROSIL - LYSANDA",
+"AGENTE DE UNIÃO SILANO PROSIL - MICRODONT",
+"AGUA OXIGENADA 10 VOL 1 LT - RIOQUIMICA",
+"AGUA OXIGENADA 10 VOL 1 LT - VIC PHARMA",
+"AGULHA GENGIVAL CURTA 0,30X22MM CX C/ 100 UN - PHS SR",
+"AGULHA GENGIVAL CURTA 0,31X25MM CX C/ 100 UN - DCARE",
+"AGULHA GENGIVAL CURTA 25X0,3MM CX C/ 100 UN - DFL DENCOJET",
+"AGULHA GENGIVAL CURTA 25X0,3MM CX C/ 100 UN - JECT",
+"AGULHA GENGIVAL CURTA CX C/ 100 UN - PROCARE",
+"AGULHA GENGIVAL EXTRA CURTA CX C/ 100 UN - PROCARE",
+"AGULHA GENGIVAL LONGA  25X0,3MM CX C/ 100 UN - JECT",
+"AGULHA GENGIVAL LONGA 0,40X30MM CX C/ 100 UN - DFL DENCOJET",
+"AGULHA GENGIVAL LONGA 0,40X30MM CX C/ 100 UN - PHS SR",
+"AGULHA GENGIVAL LONGA 30X0,40MM CX C/ 100 UN - INJEX",
+"AGULHA GENGIVAL LONGA CX C/ 100 UN - PROCARE",
+"AGULHA HIPODERMICA 0,55X20MM CX C/ 100 UN - INJEX",
+"AGULHA HIPODERMICA 0,55X20MM CX C/ 100 UN - SR",
+"AGULHA HIPODERMICA 0,7X25MM CX C/ 100 UN - SR",
+"AGULHA HIPODERMICA 20X0,55MM CX C/ 100 UN - MEDIX",
+"AGULHA HIPODERMICA 25X0,70MM CX C/ 100 UN - INJEX",
+"AGULHA HIPODERMICA ASPIRAÇÃO 1,20X40MM CX C/ 100 UN - DESCARPACK",
+"AGULHA HIPODERMICA ASPIRAÇÃO 1,20X40MM CX C/ 100 UN - SR",
+"ALCOOL 70%",
+"ALCOOL 70% - FORTY'S",
+"ALCOOL 70% - LINEX",
+"ALCOOL 70% - SULALCOOL",
+"ALCOOL 70% 2",
+"ALCOOL 70% 3",
+"ALCOOL 70% 5",
+"ALCOOL 92,8% - FLOP'S",
+"ALCOOL 92,8% - PROLINK",
+"ALCOOL 92,8% - TUPI",
+"ALCOOL 99,3% - PROLINK",
+"ÁLCOOL ISOPROPÍLICO 1 LT – MAGAZINE MEDICA.COM",
+"ÁLCOOL ISOPROPÍLICO 1 LT – PROLINK",
+"ÁLCOOL ISOPROPÍLICO P.A.-A.C.S. 1 LT – SYNTH",
+"ALGINATO EZACT KROMM TUTTI FRUTTI 410 G - VIGODENT",
+"ALGINATO HYDROGUM 5 ROXO 500 G - ZHERMACK",
+"ALGINATO HYDROGUM 500 G - ZHERMACK",
+"ALGINATO HYDROGUM JELTRAT PLUS (PRESA RAPIDA) 454 G - DENTSPLY SIRONA",
+"ALGODAO HIDROFILO 500 G - FAROL",
+"ALGODAO HIDROFILO 500 G - NATHY",
+"ALGODAO HIDROFILO 500 G - NEVOA",
+"ALGODAO ROLETE DENTAL C/ 100 UN - MAXCLEAN",
+"ALGODAO ROLETE DENTAL C/ 100 UN - SOFT PLUS",
+"ALGODAO ROLETE DENTAL C/ 100 UN - SSPLUS",
+"AMÁLGAMA GS-80 PCT C/ 50 UN - SDI",
+"ANESTESICO ALPHACAINE 100 - 2% LIDOCAÍNA C/ VASO - DFL",
+"ANESTESICO ARTICAINE 100 - 4% ARTICAINA C/ 50 UN  C/ VASO - DFL",
+"ANESTESICO MEPIADRE 100 -2% MEPIVACAINA C/ 50 UN  S/ VASO - DFL",
+"ANESTESICO MEPISV 3% - MEPIVACAINA 3% C/ 50 UN  S/ VASO - DFL",
+"ANESTESICO PRILONEST 3% C/ 50 UN  C/ VASO - DFL",
+"ANESTESICO TOPICO GEL BENZOTOP 200MG TUTTI-FRUTTI 12 G - DFL",
+"ANESTÉSICO TÓPICO GEL BENZOTOP 200MG TUTTI-FRUTTI 12 G - DFL",
+"ANESTÉSICO TÓPICO GEL BENZOTOP 200MG TUTTI-FRUTTI 30 G - DFL",
+"ANTISSEPTICO BOCAL DIGLICONATO DE CLOREXIDINA 0,12% SEM ALCOOL 1LT - VIC PHARMA",
+"ANTISSEPTICO CLOREXIDINA CHLORCLEAR 2% SOLUÇÃO ALCOOLICA 1LT - VIC PHARMA",
+"ANTISSEPTICO CLOREXIDINA DEGERMANTE 2% SOLUÇÃO TENSOATIVOS 1LT - RIOQUÍMICA",
+"AVENTAL DESCARTAVEL BRANCO 1.40X1.20 PACOTE C/ 10 UN - DESCARTEE",
+"AVENTAL DESCARTAVEL BRANCO ESPECIAL PACOTE C/ 10 UN - DESCARPACK",
+"AVENTAL DESCARTAVEL BRANCO MANGA LONGA - ANADONA",
+"AVENTAL DESCARTAVEL BRANCO MANGA LONGA - SOCC",
+"BANDA MATRIZ 0,5X5 X 500 MM AÇO - INJECTA",
+"BANDA MATRIZ 0,5X5 X 500 MM AÇO - IODONTOSUL",
+"BANDA MATRIZ 0,5X5 X 500 MM AÇO - PREVEN",
+"BANDA MATRIZ 0,5X7 X 500 MM AÇO - IODONTOSUL",
+"BANDA MATRIZ 0,5X7 X 500 MM AÇO - PREVEN",
+"BANDA MOLAR INFERIOR AZUL UNIVERSAL KIT COM 130 UNIDADES SORTIDAS",
+"BANDA MOLAR SUPERIOR VERMELHO UNIVERSAL KIT COM 260 UNIDADES SORTIDAS ",
+"BARREIRA GENGIVAL FOTOPOLIMERIZAVEL GEL 2G / BLUE TOP DAM - FGM",
+"BARREIRA GENGIVAL FOTOPOLIMERIZAVEL LYSDAM GEL 2,5G - LYSANDA",
+"BICARBONATO DE SODIO AIRON 200 G - MAQUIRA",
+"BICARBONATO DE SODIO AIRON 500 G - MAQUIRA",
+"BICARBONATO DE SODIO CX C/ 15 UN DE 40 G - CLEAN OKTA",
+"BICARBONATO DE SODIO CX C/ 24 (UN DE 40 G) - CLEAN OKTA",
+"BICARBONATO DE SODIO SABOR MORANGO CX C/ 15 UN DE 40 G - CLEAN OKTA",
+"BICARBONATO DE SODIO UN DE 40 G - CLEAN OKTA",
+"BOWIE-DICK PACOTE DE TESTE C/6 UN - 3M",
+"CANETA  MARCADOR PARA CD/DVD TINTA AZUL PERMANETE PONTA MÉDIA 2.0 - JOCAR OFFICE",
+"CANETA  MARCADOR PARA CD/DVD TINTA PRETA PERMANETE PONTA MÉDIA 2.0 - PILOT",
+"CANETA  MARCADOR PARA QUADRO BRANCO TINTA RECARREGAVEL COR VERDE PONTA MÉDIA - PILOT",
+"CANETA  MARCADOR PARA RETOPROJETOR TINTA PERMANETE PONTA FINA 1.0 - PILOT",
+"CANETA MARCA TEXTO TINTA VERDE  PONTA 4,0MM - MAXPRINT",
+"CARBONO LÍQUIDO SUPER FILME 10 ML + SOLVENTE 20 ML - KOTA",
+"CARIOSTÁTICO CARIESTOP 30% - BIODINÂMICA",
+"CARTELA DE RADIOGRAFIA DE 14 FUROS  C/ 10 - PREVEN",
+"CARTELA DE RADIOGRAFIA DE 14 FUROS  C/ 10 - SEM MARCA",
+"CARTELA DE RADIOGRAFIA DE 2 FUROS  C/ 10 - PREVEN",
+"CARTELA DE RADIOGRAFIA DE 4 FUROS  C/ 10 - PREVEN",
+"CARTELA DE RADIOGRAFIA DE 6 FUROS  C/ 10 - S/ MARCA",
+"CARTELA DE RADIOGRAFIA DE 6 FUROS  C/ 25 - MAQUIRA",
+"CARTELA DE RADIOGRAFIA DE 6 FUROS  C/ 25 - PREVEN",
+"CARTELA DE RADIOGRAFIA DE 6 FUROS  C/ 25 - PREVEN 2",
+"CERA 7 ROSA 18 LAMINAS  - ASFER",
+"CERA 7 ROSA LÂMINA CX C/ 18 LAMINAS 225 G - LYSANDA",
+"CERA UTILIDADE C/ 5 LAMINAS - ASFER",
+"CERA UTILIDADE CX C/ 5 LAMINAS 225 G - LYSANDA",
+"CERA UTILIDADE NEW WAX U 5 LAMINAS 225 G - TECHNEW",
+"CIMENTO CIRURGICO LIQ. SURGICAL CEMENTE 20 ML - MAQUIRA",
+"CIMENTO CIRÚRGICO PERICEM 1 BASE 90G + 1 ACELERADOR 90G - MAQUIRA",
+"CIMENTO CIRURGICO PO SURGICAL CEMENTE 50 G - MAQUIRA",
+"CIMENTO DE ZINCO 10 ML - SS WHITE",
+"CIMENTO DE ZINCO LS 10 ML - COLTENE",
+"CIMENTO DE ZINCO LS 10 ML - VIGODENT",
+"CIMENTO DE ZINCO LS PO 28 G - COLTENE",
+"CIMENTO DE ZINCO LS PO 28 G - VIGODENT",
+"CIMENTO DE ZINCO PO 28 G - SS WHITE",
+"CIMENTO ENDODÔNTICO ENDOFILL LIQ. 10ML +  PO 12G - DESTSPLY (KIT)",
+"CIMENTO ENDODÔNTICO ENDOFILL PO 12G (ITEM DE KIT SEPARADO ) - DESTSPLY",
+"CIMENTO ENDODÔNTICO FILL CANAL EM PO 12 G - MAQUIRA",
+"CIMENTO ENDODÔNTICO FILL CANAL OBTURAÇÃO LÍQUIDO 10 ML - MAQUIRA",
+"CIMENTO ENDODÔNTICO SERINGA 2G + 10 PONTEIRAS KIT FEAPEX - FORMA E AÇÃO",
+"CIMENTO OBTURADOR PROVISÓRIO FLUOR 25G - VILLEVIE",
+"CIMENTO OBTURADOR PROVISÓRIO NORMAL 25G - VILLEVIE",
+"CIMENTO PROVISORIO HIDRÓXIDO DE CÁLCIO (HYDRO C) + CATALIZADOR - DENTSPLY (KIT)",
+"CIMENTO PROVISORIO HIDROXIDO DE CALCIO HYDCAL + CATALIZADOR - MAQUIRA (KIT)",
+"CIMENTO PROVISORIO LYS TEMP - LYSANDA",
+"CIMENTO PROVISORIO PROVICOL 2 TUBOS DE 25 G - VOCO",
+"CIMENTO PROVISORIO PULPOSAN 20 ML - SS WHITE",
+"CIMENTO PROVISORIO PULPOSAN PO 50 G - SS WHITE",
+"CIMENTO REPARADOR MTA BRANCO 2 DOSES 0,28G - ANGELUS",
+"CIMENTO RESINOSO DUAL ALLCEM BASE + CATALISADOR A2 5G - FGM",
+"CIMENTO RESINOSO DUAL ALLCEM BASE A2 2,5G - FGM",
+"CIMENTO RESINOSO DUAL ALLCEM CATALISADOR 2,5G - FGM",
+"CIMENTO RESINOSO DUAL RELYX U200 - 3M",
+"CLIPS 3/0 TAM. 6MM X 24MM CAIXA C/ 50 UN - ACC",
+"CLIPS 3/0 TAM. 6MM X 24MM CAIXA C/ 50 UN - BACCHI",
+"COLETOR DE MATERIAL PERFURO CORTANTE 1,5 KG - DESCARBOX",
+"COLETOR DE MATERIAL PERFURO CORTANTE 1,5 KG - DESCARPACK",
+"COLETOR DE MATERIAL PERFURO CORTANTE 7,0 KG - DESCARBOX",
+"COLETOR DE MATERIAL PERFURO CORTANTE 7,0 KG - DESCARPACK",
+"COMPRESSA GAZE ESTERIL 8 CAMADAS 5 DOBRAS C/ 10 UN 13 FIOS - AMED",
+"COMPRESSA GAZE ESTERIL 8 CAMADAS 5 DOBRAS C/ 10 UN 13 FIOS - HÉRIKA",
+"COMPRESSA GAZE ESTERIL 8 CAMADAS 5 DOBRAS C/ 10 UN 13 FIOS - LIVIA",
+"COMPRESSA GAZE ESTERIL 8 CAMADAS 5 DOBRAS C/ 10 UN 9 FIOS - AMED",
+"COMPRESSA GAZE NÃO ESTÉRIL 9 FIOS C/ 500 COMPRESSAS - CLEAN",
+"COMPRESSA GAZE NÃO ESTÉRIL 9 FIOS C/ 500 COMPRESSAS - KARINA",
+"COMPRESSA GAZE NÃO ESTÉRIL 9 FIOS C/ 500 COMPRESSAS - REBECCA",
+"CONDICIONADOR ÁCIDO CONDAC PORCELANA 10% - FGM",
+"CONDICIONADOR ÁCIDO CONDAC PORCELANA 5% - FGM",
+"CONDICIONADOR ÁCIDO FOSFÓRICO 35% UN GLUMA - KULZER (COMBO C/ 3UN)",
+"CONDICIONADOR ÁCIDO FOSFÓRICO 37% UN - FGM (COMBO C/ 3UN)",
+"CONDICIONADOR ÁCIDO FOSFÓRICO 37% UN - LYSAC GEL (UNIDADES)",
+"CONDICIONADOR ÁCIDO FOSFÓRICO 37% UN - VIGODENTE (COMBO C/ 3UN)",
+"COPO 200 ML - COPOBRAS",
+"COPO 200 ML - ULTRA COPOS",
+"COPO 50 ML",
+"COREGA ULTRA MAX FIXAÇÃO + REFRESCANCIA 40 G - GSK",
+"COREGA ULTRA MAX FIXAÇÃO 20 G - HALEON",
+"COREGA ULTRA MAX FIXAÇÃO 40 G - GSK",
+"COROA DECIDUO ANTERIOR - TDV",
+"COTONETE CX C/ 75 UM - B & S",
+"COTONETE CX C/ 75 UN",
+"DESSENSIBILIZANTE DESENSIBILIZE KF 0,2% 2,5G - FGM",
+"DESSENSIBILIZANTE DESENSIBILIZE KF 2,0% 2,5G - FGM",
+"DETERGENTE MULTIENZIMATICO 5 ENSIMAS ZYMEDET GOLD 1 LT - PROLINK",
+"DETERGENTE MULTIENZIMATICO PODEROSO 1 LT - KELLDRIN",
+"DISPENSER PARA  REFIL DE ASSENTO/FORRO SANITARIO FEMININO (SUPORTE PARA COLAR NA PAREDE C/ TIRAS ADESIVAS) - PREMISSE",
+"E.D.T.A TRISSÓDICO LÍQUIDO - BIODINÂMICA",
+"ELASTICO ORTODONTICO BENGALINHA PC C/ 10 SUP C/ 1000 UN COLORIDAS - ORTHOMETRIC",
+"ELASTICO SEPARADOR O5/32\" O4,00 MM C/ 1000 UN AZUL - MORELLI",
+"ESCALA DE CORES DE DENTES 12 CORES - BIOCLERII",
+"ESCALA DE CORES DE DENTES 12 CORES - POP-DENT",
+"ESCALA DE CORES DE DENTES 16 CORES - VITA",
+"ESCALA DE CORES DE DENTES 264 COR 62 ANTERIOR / SUPERIOR - POP-DENT",
+"ESCALA DE CORES DE DENTES 264 COR 66 SUPERIOR / SUPERIOR - POP DENT",
+"ESCALA DE CORES DE DENTES 266 COR 66 INFERIOR / ANTERIOR - VIPI",
+"ESCALA DE CORES DE DENTES A25 COR 66 ANTERIOR / INFERIOR - POP-DENT",
+"ESCALA DE CORES DE DENTES COR 662INFERIOR - POP-DENT",
+"ESCALA DE CORES DE GENGIVAS STG 14 ESCALAS + MATRIZ METALICA - VIPICRIL",
+"ESCOVA DE DENTE ADULTO",
+"ESCOVA DE DENTE ADULTO  - MEDFIO",
+"ESCOVA DE DENTE ADULTO COMBO COM 10 UN - MEDFIO",
+"ESCOVA DE DENTE INFANTIL - MEDFIO",
+"ESCOVA DE DENTE INFANTIL COMBO COM 10 UN - DENTAL K",
+"ESCOVA DE DENTE INFANTIL COMBO COM 10 UN - MEDFIO",
+"ESCOVA PARA AZULEIJO REF.9139 - SUPERPRO",
+"ESPARADRAPO ROLO",
+"ESPARADRAPO ROLO 2",
+"ESPONJA AMARELA E VERDE DE LIMPEZA PESADA PCT C/ 4 UN (ESPONJA DE LIMPAR LOUÇA ) - LIMPPANO",
+"ESPONJA HEMOSTATICA HEMOSPON CX C/ 10 - MAQUIRA",
+"ESTILETE PLASTICO C/ TRAVA 18MM GRANDE CORES DIVERSAS - KAZ ",
+"ESTILETE PLASTICO C/ TRAVA 9MM PEQUENO CORES DIVERSAS - BRW ",
+"ETIQUETA DE BOLINHA AMARELO 12 MM (TP 12 AM) C/ 210 UN - PIMACO",
+"ETIQUETA DE BOLINHA AZUL 12 MM (TP 12 AZ) C/ 210 UN - PIMACO",
+"ETIQUETA DE BOLINHA VERDE 12 MM (TP 12 VD) C/ 210 UN - PIMACO",
+"ETIQUETA DE BOLINHA VERMELHO 12 MM (TP 12 VM) C/ 210 UN - PIMACO",
+"ETIQUETA DUPLO USO PARA VAPOR COM INDICADOR QUIMIDO ROLO C/ 550 UN - TSI LAVEL",
+"ETIQUETA SUPREMA CME",
+"EUCALIPTOL 10 ML - BIODINÂMICA",
+"EUGENOL 20 ML - BIODINÂMICA",
+"EVICÁRIE 10 ML - BIODINAMICA",
+"EVIDENCIADOR DE PLACA EVIPLAC - BIODINÂMICA",
+"FIBRA DE VIDRO TRANÇADA INTERLIG - ANGELUS",
+"FILME RADIOGRÁFICO ADULTO N ° 2 PERIAPICAL E-SPEED - CARESTREAM",
+"FILME RADIOGRÁFICO INFANTIL N ° 0 PERIAPICAL E-SPEED - CARESTREAM",
+"FIO DE AÇO 012 X 0,30 - MORELLI",
+"FIO DE AÇO 028 X 0,70 - ORTO CENTRAL",
+"FIO DE AÇO 032 X 0,80 - ORTO CENTRAL",
+"FIO DE SOLDA DE PRATA 0,50 mm 3 METROS - ORTO CENTRAL",
+"FIO DE SOLDA DE PRATA Ø0,5mm 35.30.010 - MORELLI",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 3 - COMPR. AGULHA 1,5 CM 1/2 MM 45 CM - SHALON",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 3 - COMPR. AGULHA 1,5 CM 1/2 MM 45 CM - TECHNEW",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 3 - COMPR. AGULHA 1,7 CM 1/2 MM 45 CM - BC SUTURE",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 3 - COMPR. AGULHA 2,0 CM 1/2 MM 45 CM - TECHNOFIO",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 4 - COMPR. AGULHA 1,7 CM 1/2 MM 45 CM - BC SUTURE",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 4 - COMPR. AGULHA 2,0 CM 3/8 MM 45 CM - BC SUTURE",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 4 - COMPR. AGULHA 2,0 CM 3/8 MM 45 CM - PROCARE",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 4 - COMPR. AGULHA 2,5 CM 3/8 MM 45 CM - PROCARE",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 5 - COMPR. AGULHA 1,7 CM 1/2 MM 45 CM - BC SUTURE",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 6 - COMPR. AGULHA 1,5 CM 1/2 MM 45 CM - SHALON",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 6 - COMPR. AGULHA 1,5 CM 1/2 MM 45 CM - TECHOFIO",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 6 - COMPR. AGULHA 2,0 CM 3/8 MM 45 CM - SHALON",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N° 6 - COMPR. AGULHA 3,0 CM 3/8 MM 45 CM - SHALON",
+"FIO DE SUTURA AGULHADO NYLON PRETA C/ 24 FIOS N°4 - COMPR. AGULHA 2,0 CM 3/8 MM 45 CM - TECHNOFIO",
+"FIO DE SUTURA AGULHADO SEDA C/ 24 FIOS N° 3 - COMPR. AGULHA 1,7 CM 1/2 MM 45 CM  - TECHNOFIO",
+"FIO DE SUTURA AGULHADO SEDA C/ 24 FIOS N° 3 - COMPR. AGULHA 1,7 CM 1/2 MM 45 CM - BC SUTURE",
+"FIO DE SUTURA AGULHADO SEDA C/ 24 FIOS N° 4 - COMPR. AGULHA 1,7 CM 1/2 MM 45 CM - BC SUTURE",
+"FIO DE SUTURA AGULHADO SEDA C/ 24 FIOS N° 4 - COMPR. AGULHA 1,7 CM 1/2 MM 45 CM - TECHNEW",
+"FIO DE SUTURA AGULHADO SEDA C/ 24 FIOS N° 4 - COMPR. AGULHA 1,7 CM 1/2 MM 45 CM - TECHNOFIO",
+"FIO DE SUTURA AGULHADO SEDA TRANÇADA PRETA C/ 24 FIOS N°4 - TECHNOFIO",
+"FIO DENTAL DENTRO  (POTE PEQ. C/ LAMINA DE CORTE PARA USO INDIVIDUAL) 500 METROS - HILLO",
+"FIO DENTAL DENTRO (POTE PEQ. C/ LAMINA DE CORTE PARA USO INDIVIDUAL) 200 METROS - HALITO PURO",
+"FIO DENTAL DENTRO (POTE PEQ. C/ LAMINA DE CORTE PARA USO INDIVIDUAL) 500 METROS - MEDFIO",
+"FIO RETRATOR N° 0 RETRAFLEX - BIODINÂMICA",
+"FIO RETRATOR N° 00 RETRAFLEX - BIODINÂMICA",
+"FIO RETRATOR N° 000 RETRAFLEX - BIODINÂMICA",
+"FIO RETRATOR N° 1 ULTRAPAK RETRAFLEX - BIODINÂMICA",
+"FITA AUTOCLAVE 19MMX30M",
+"FITA AUTOCLAVE 19MMX30M - HOSPFLEX",
+"FITA HOSPITALAR 19MMX50M - EUROCEL",
+"FITA HOSPITALAR 19MMX50M - MASTERFIX",
+"FIXADOR RADIOGRAFICO - LYSANDA",
+"FIXADOR RADIOGRAFICO SELEKTO - KULZER",
+"FLUOR EM GEL 200 ML - MAQUIRA",
+"FLUOR EM GEL MENTA 200 ML - LYSANDA",
+"FLUOR EM GEL TUTTI-FRUTTI 200 ML - LYSANDA",
+"FLUOR EM GEL TUTTI-FRUTTI 200 ML - MAQUIRA",
+"FOLHA DE PAPEL A4 COR AMARELO  C/ 500 FOLHAS - CHAMEX",
+"FOLHA DE PAPEL A4 COR ROSA C/ 500 FOLHAS - CHAMEX",
+"FOLHA DE PAPEL A4 COR VERDE  C/ 500 FOLHAS - CHAMEX",
+"FORMOCRESOL - BIODINÂMICA",
+"FORRO DESCARTAVEL DE PEPEL PARA ASSENTO DE VASO SANITARIO FEMININO C/ 40 UN - VELUX",
+"FOSFORO",
+"FOSFORO 2",
+"GEL HEMOSTÁTICO HEMOGEL 2,5G - TECHNEW",
+"GESSO TIPO II PEDRA BRANCO  1KG - ASFERE",
+"GESSO TIPO III PEDRA AMARELO 1KG - ASFER",
+"GESSO TIPO III PEDRA AMARELO 1KG - AWAY",
+"GESSO TIPO III PEDRA AMARELO 1KG - HERODENT",
+"GESSO TIPO III PEDRA BRANCO  1KG - ASFERE",
+"GESSO TIPO IV DENT-MIX ROSA 1KG - ASFER",
+"GESSO TIPO IV HEROSTORE ROSA 1KG - VIGODENT",
+"GESSO TIPO IV VENUS ROSA 1KG - AWAY",
+"GLICERINA LIQUIDA BI-DESTILADA 1LT - ALTARES",
+"GLICERINA LIQUIDA P.A ACS 1LT - EXODO",
+"GODIVA EXATA KERR CX C/ 15 BASTÕES - SDS KERR",
+"GODIVA EXATA VERDE CX C/ 15 BASTÕES - DFL",
+"GODIVA GODIBAR EM BASTÃO VERDE PCT C/ 15UN - LYSANDA",
+"HIDROXIDO DE CALCIO P.A. - BIODINAMICA",
+"IODOFORMIO 10 G - BIODINAMICA",
+"IODOPOVIDONA RIODEINE DERMO SUAVE DEGERMANTE 1LT- RIOQUÍMICA",
+"IONÔMERO DE VIDRO CIMENTAÇÃO MAXXION C - FGM (KIT) (EMBALAGEM LARANJA)",
+"IONOMERO DE VIDRO FORRADOR IONOSEAL - VOCO",
+"IONÔMERO DE VIDRO RESTAURADOR E FORRADOR VITRO FIL LC R COR A3 - DFL (KIT) ( PÓ 5G + LIQ 2,5 ML +PRIME 2,5 ML + NATURAL GLAZE ML",
+"IONÔMERO DE VIDRO RESTAURADOR MAXXION R 8ML - FGM (EMBALAGEM VERDE)",
+"IONÔMERO DE VIDRO RESTAURADOR MAXXION R COR A2 - FGM (KIT) (EMBALAGEM AZUL)",
+"IONÔMERO DE VIDRO RESTAURADOR MAXXION R COR A2 PO 10 G - FGM (EMBALAGEM AZUL)",
+"IONÔMERO DE VIDRO RESTAURADOR RIVA LIGHT CURE A2 15g po + 8g - SDI",
+"IONÔMERO DE VIDRO RESTAURADOR RIVA LIGHT CURE A2 5g po + 3g - SDI",
+"ISOLANTE DE GESSO / ISOLANTE RESINA ACRILICA CEL-LAC 500 ML - SSWHITE",
+"ISOLANTE DE GESSO / ISOLANTE RESINA ACRILICA LYSO-LANTE 1 LT - LYSANDA",
+"ISOLANTE DE GESSO / ISOLANTE RESINA ACRILICA LYSO-LANTE 500 ML - LYSANDA",
+"KIT CIRÚRGICO ESTÉRIL IMPLANTE - PROTDESC",
+"KIT CIRÚRGICO ESTÉRIL IMPLANTE 22 INTENS INCLUSOS - MEDIS",
+"KIT CIRÚRGICO ESTÉRIL IMPLANTE 22 ITENS INCLUSOS - PROTDESC",
+"KIT MEDIDOR  DE ALGINADO HYDROGUM VERDE 8G + MEDIDOR DE AGUA 18 ML -  ZHERMACK",
+"KIT MEDIDOR DE ALGINADO JELTRATE 1 CUCHARA MEDIDORA + MEDIDOR DE AGUA - DENTSPLY SIRONA",
+"KIT MEDIDOR DE ALGINADO VIGODENT 1 CUCHARA MEDIDORA + MEDIDOR DE AGUA - VIGODENT",
+"LÂMINA DE BISTURI 12 C/ 100 UM - MAXICON",
+"LÂMINA DE BISTURI 12 C/ 100 UM - SOLIDOR",
+"LÂMINA DE BISTURI 15 C C/ 100 UM - MAXICON",
+"LÂMINA DE BISTURI 15 C C/ 100 UM - SOLIDOR",
+"LÂMINA DE BISTURI 15 C/ 100 UM - LAMEDID",
+"LÂMINA DE BISTURI 15 C/ 100 UM - MAXICON",
+"LÂMINA DE BISTURI 15 C/ 100 UM - SOLIDOR",
+"LANCETA AUTO RETRATIL 28G 0,36 X 1,5MM C/ 200 UN (TESTE SANGUE) - TKL",
+"LANCETA AUTO RETRATIL 28G 1,4MM C/ 100 UN (TESTE SANGUE) - CEPALAB",
+"LANCETA AUTO RETRATIL 28G 1,8 - 0,36 C/ 100 UN (TESTE SANGUE) - DESCARPACK",
+"LANCETA AUTO RETRATIL 28G 1,8MM C/ 100 UN (TESTE SANGUE) - DESCARPACK",
+"LANCETA AUTO RETRATIL 28G 1,8MM C/ 100 UN (TESTE SANGUE) - UNIQMED",
+"LENÇOL BORRACHA - MADEITEX",
+"LUBRIFICANTE KMED GEL",
+"LUBRIFICANTE KY GEL 50G",
+"LUBRIFICANTE LUBRI.FIK GEL 50 G",
+"LUBRIFICANTE OLEO MAQUIRA SPRAY P/ ALTA E BAIXA ROTAÇÃO - MAQUIRA",
+"LUVA DE LATEX 6,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - LIFE PLUS",
+"LUVA DE LATEX 6,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - MAX TOUCH",
+"LUVA DE LATEX 6,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - MEDIX",
+"LUVA DE LATEX 6,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - SANRO LIS",
+"LUVA DE LATEX 6,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - SENSICARE",
+"LUVA DE LATEX 6,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - SENSITEX",
+"LUVA DE LATEX 7,0 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - DESCARPACK",
+"LUVA DE LATEX 7,0 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - LIFE PLUS",
+"LUVA DE LATEX 7,0 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - MEDIX",
+"LUVA DE LATEX 7,0 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - MUCAMBO SENSITEX",
+"LUVA DE LATEX 7,0 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - NEW HAND",
+"LUVA DE LATEX 7,0 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - SENSI CARE",
+"LUVA DE LATEX 7,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - DESCARPACK",
+"LUVA DE LATEX 7,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - LIFE PLUS",
+"LUVA DE LATEX 7,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - MEDIX",
+"LUVA DE LATEX 7,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - MUCAMBO SENSIFREE",
+"LUVA DE LATEX 7,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - NEW HAND",
+"LUVA DE LATEX 7,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - SENSICARE",
+"LUVA DE LATEX 7,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - SENSICARE 2",
+"LUVA DE LATEX 8,0 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - LIFE PLUS",
+"LUVA DE LATEX 8,0 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - MEDIX",
+"LUVA DE LATEX 8,0 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - NEW HAND",
+"LUVA DE LATEX 8,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - LIFE PLUS",
+"LUVA DE LATEX 8,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - MAX TOUCH",
+"LUVA DE LATEX 8,5 PARA PROCEDIMENTO CIRURGICO C/ 10 UN - SENSICARE",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. G  CX C/ 100 UN - HANDFORM",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. G CX C/ 100 UN - DESCARPACK",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. G CX C/ 100 UN - DPK",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. G CX C/ 100 UN - MB LIFE",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. G CX C/ 100 UN - MEDIX",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. G CX C/ 100 UN - SUPER MAX",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. G CX C/ 100 UN - UNIGLOVES",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. G CX C/ 100 UN - UTILE.NE",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. M CX C/ 100 UN - DESCARPACK",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. M CX C/ 100 UN - HANDFORM",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. M CX C/ 100 UN - MEDIX",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. M CX C/ 100 UN - TOP NUGARD",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. M CX C/ 100 UN - TRIX",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. M CX C/ 100 UN - UNIGLOVES",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - BOMPACK",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - DESCARPACK",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - HANDFORM",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - MB LIFE 2",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - MEDIX",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - PROCED",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - STANDARD",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - TOP NUGARD",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - TRIX",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - UTILE.NE",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. PP CX C/ 100 UN - DESCARPACK",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. PP CX C/ 100 UN - EMGRUBER",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. PP CX C/ 100 UN - HANDFORM",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. PP CX C/ 100 UN - INOVEN",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. PP CX C/ 100 UN - MEDIX",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. PP CX C/ 100 UN - SUPER MAX",
+"LUVA DE LATEX PARA PROCEDIMENTO NÃO CIRURGICO TAM. PP CX C/ 100 UN - UNIGLOVES",
+"LUVA DE NITRILO PARA PROCEDIMENTO NÃO CIRURGICO TAM. M CX C/ 100 UN - MEDIX",
+"LUVA DE NITRILO PARA PROCEDIMENTO NÃO CIRURGICO TAM. M CX C/ 100 UN - SUPER MAX",
+"LUVA DE NITRILO PARA PROCEDIMENTO NÃO CIRURGICO TAM. M CX C/ 100 UN - VOLK DO BRASIL",
+"LUVA DE NITRILO PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - FLEXIPLUS",
+"LUVA DE NITRILO PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - MEDIX",
+"LUVA DE NITRILO PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - MEDIX 2",
+"LUVA DE NITRILO PARA PROCEDIMENTO NÃO CIRURGICO TAM. P CX C/ 100 UN - SUPER MAX",
+"LUVAS DESCARTAVEIS  PARA COLETAR ABSORVENTE FEMININO REFIL C/ 25 - OBEG",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - DESCARPACK",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - DESCARPACK 2",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - ECOMAX",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - HNDESC",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - INJEX",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - INOVEN",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - MEDIX",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - SP HEALTH",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - SSPLUS",
+"MASCARA DESCARTAVEL TRIPLA BRANCA CX C/ 50 UM - VABENE",
+"MATERIAL DE MOLDAGEM POLIÉTER IMPREGUM SOFT MEDIUM BODY CONSISTENCY - 3M",
+"METALPIN CX C/ 30 TAM. P,M,G",
+"MOLDEIRA DUPLA DESCARTÁVEL DE FLÚOR CX C/ 50 UN - BIODINÂMICA",
+"MOLDEIRA DUPLA DESCARTÁVEL DE FLÚOR PEQUENA CX C/ 50 UN - BIODINÂMICA",
+"MOLDEIRA DUPLA DESCARTÁVEL DE FLÚOR SORTIDA CX C/ 50 UN - BIODINÂMICA",
+"ÓCULOS DE PROTEÇÃO - SSPLUS",
+"OMCILON-A ORAL BASE CREME (TRIANCINOLONA ACETONIDA+SULF. NEOMICINA+GRAMICIDINA+NISTALINA) 30G",
+"OMCILON-A ORAL BASE PASTA (TRIANCINOLONA ACETONIDA) 10G",
+"OMCILON-A ORAL BASE PASTA 10G",
+"OTOSPORIN 10ML  - FQM",
+"OXIDO DE ALUMÍNIO 50 MICRONS 800G - BIO-ART",
+"OXIDO DE ALUMÍNIO 90 MICRONS 800G - BIO-ART",
+"ÓXIDO DE ZINCO 50G - BIODINÂMICA",
+"PANO REUTILIZAVEL ROLO FOLHA DE 21CM X 20 CM CADA C/ 40 PANOS - ALKLIN",
+"PAPEL CARBONO PARA ARTICULAÇÃO CONTACTO 12 TIRAS UN - ANGELUS",
+"PAPEL CARBONO PARA ARTICULAÇÃO CONTACTO 12 TIRAS UN - BIODINÂMICA",
+"PAPEL CARBONO PARA ARTICULAÇÃO CONTACTO 12 TIRAS UN - IODONTOSUL",
+"PAPEL FILME DE PVC 30 MT X 28 CM - PARANÁ",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 100X100 - AMED",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 100X100 - HOSPFLEX",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 100X100 - PACKGC",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 100X100 - POLLITEX",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 15X100 - AMED",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 15X100 - HOSPFLEX",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 15X100 - POLLITEX",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 30X100 - ",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 30X100 - ESTERILCARE",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 30X100 - HOSPFLEX",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 30X100 - POLLITEX",
+"PAPEL GRAU CIRURGICO P/ ESTERILIZACAO 30X100 - ZELARA",
+"PARAMONOCLOROFENOL CANFORADO - BIODINÂMICA",
+"PASTA BRANCA TRANSPARENTE 235MM X 50MM X 335MM TAM. OFICIO LOMBO 5,5 - DELLO",
+"PASTA BRANCA TRANSPARENTE 245MM X 40MM X 335MM TAM. OFICIO - PLASCONY",
+"PASTA CATALOGO PRETA COM 50 PLASTICOS DENTRO 245MM X 333MM REF. 1090 - DAC",
+"PASTA DE DENTE",
+"PASTA DE DENTE - EVEN",
+"PASTA DE DENTE 1",
+"PASTA DE DENTE 2",
+"PASTA DE DENTE 2 EM 1 - EVEN GEL ",
+"PASTA DE DENTE 3",
+"PASTA DE DENTE 5",
+"PASTA DE IMPRESSAO A BASE DE OXIDO DE ZINCO E EUGENOL LS - VIGODENT",
+"PASTA DE ZINCO ENOLICA - LYSANDA",
+"PASTA DIAMANTADA PARA POLIMENTO DENTAL - LYSDIAMOND",
+"PASTA DIAMANTADA PARA POLIMENTO DENTAL 2G - VIGODENTE",
+"PASTA DIAMANTADA PARA POLIMENTO DENTAL DIAMONDR - FGM",
+"PASTA DIAMANTADA PARA POLIMENTO DIAMOND EXCEL - FGM",
+"PASTA P/ SOLDAR PRATA 20 ML",
+"PASTA PROFILATICA HERJOS FLUOR E TUTTI-FRUTTI 90 G - VIGODENTE",
+"PASTA PROFILATICA PROFILYSMORANGO 90 G - LYSANDA",
+"PASTA PROFILATICA SHINE TUTTI-FRUTTI 90 G - MAQUIRA",
+"PEDRA POMES - ASFER",
+"PEDRA POMES 100 G - IODONTOSUL",
+"PEDRA POMES 100 G - MAQUIRA",
+"PERIOPLAK CLOREXIDINA 0,12% MENTA 1,1LT - REYMER",
+"PILHA TIPO AAA2  CARTELA C/ 2 UN - DURACELL",
+"PINO DE FIBRA DE VIDRO REFORPOST N° 1 - ANGELUS",
+"PINO DE FIBRA DE VIDRO REFORPOST N° 2 - ANGELUS",
+"PINO DE FIBRA DE VIDRO SYSTEM WHITEPOST DC 0,5 REFIL - FGM",
+"PINO DE FIBRA DE VIDRO SYSTEM WHITEPOST DC 1 REFIL - FGM",
+"PINO DE FIBRA DE VIDRO SYSTEM WHITEPOST DC 2 REFIL - FGM",
+"PINO DE FIBRA DE VIDRO SYSTEM WHITEPOST DC 3 REFIL - FGM",
+"PINO PARA MOLDAGEM PINJET PCT C/ 50 UN - ANGELUS",
+"PLACA PARA CONFECÇÃO DE MOLDEIRA WHITENESS QUADRADA - FGM",
+"PLACA PARA MOLDEIRA DE CLAREAMENTO WHITENESS QUADRADA - FGM",
+"PONTA DE GUTTA PERCHA F 28MM (100 UNIDADES) - ODOUS DE DEUS",
+"PONTA DE GUTTA PERCHA F 28MM (120 UNIDADES) - DENTSPLY",
+"PONTA DE GUTTA PERCHA F 28MM (120 UNIDADES) - TANARI",
+"PONTA DE GUTTA PERCHA FM 28MM (120 UNIDADES) - DENTSPLY",
+"PONTA DE GUTTA PERCHA FM 28MM (120 UNIDADES) - TANARI",
+"PONTA DE GUTTA PERCHA FM EXTRA LONGO 34 MM MICROTIPPED (80 UNIDADES) - ENDO TANARI PLUS",
+"PONTA DE GUTTA PERCHA FM EXTRA LONGO 35 MM (80 UNIDADES) - ODOUS DE DEUS",
+"PONTA DE GUTTA PERCHA FM MEDIO 28MM (100 UNIDADES) - ODOUS DE DEUS",
+"PONTA DE GUTTA PERCHA M 28MM (120 UNIDADES) - DENTSPLY",
+"PONTA DE GUTTA PERCHA M 28MM (120 UNIDADES) - TANARI",
+"PONTA DE GUTTA PERCHA MF 28MM (120 UNIDADES) - DENTSPLY",
+"PONTA DE GUTTA PERCHA MF 28MM (120 UNIDADES) - TANARI",
+"PONTA DE PAPEL ABSORVENTE CELLPACK 15-40 C/ 120 - TANARI",
+"PONTA DE PAPEL ABSORVENTE CELLPACK 15-40 C/ 120 - TANARI 2",
+"PONTA DE PAPEL ABSORVENTE CELLPACK 15-40 C/ 200 - MK LIFE",
+"PONTA DE PAPEL ABSORVENTE CELLPACK 25 C/ 120 - TANARI",
+"PONTA DE PAPEL ABSORVENTE CELLPACK 30 C/ 120 - TANARI",
+"PONTA DE PAPEL ABSORVENTE CELLPACK 35 C/ 120 - TANARI",
+"PONTA DE PAPEL ABSORVENTE CELLPACK 35 C/ 180 - MK LIFE",
+"PONTA DE ULTRASSOM TIPS ENDO E12 DABI ATLANTE - (CX C/ 1UN)",
+"PONTA DE ULTRASSOM TIPS PERIO SUB - (KIT C/ 5UN)",
+"PONTA DE ULTRASSOM TIPS PERIO SUB DABI ATLANTE - (CX C/ 1UN)",
+"PONTA DE ULTRASSOM TIPS PERIO SUB DABI ATLANTE OP: 000011981822 - (CX C/ 1UN)",
+"PONTA DE ULTRASSOM TIPS PERIO SUPRA - (CX C/ 1UN)",
+"PONTA DE ULTRASSOM TIPS PERIO SUPRA OP: 000011982326 - (CX C/ 1UN)",
+"POTE DE EXAME",
+"QUADRO DE AVISOS MULTIUSO A4 C/  AUTO ADESIVO DUPLA FACE - MAX CRIL",
+"REEMBASADOR SOFT PROVISORIO 30G DE PO + 30ML + 8ML + 2 COPOS INCOLOR - TDV (KIT)",
+"REEMBASADOR SOFT REBASE 30G PO + 30ML + 8ML DE GLAZE + 2 COPOS INCOLOR- TDV (KIT)",
+"REFIL DE ESTILETE 18MM GRANDE C/ 10 UN - SUPREM LTDA",
+"REFIL DE ESTILETE 9MM PEQUENO C/ 10 UM",
+"REFIL DE FIO DENTAL PARA SUPORTE DE PAREDE 400 METROS - MACH FLOSS",
+"RESINA ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 60 - CLÁSSICO",
+"RESINA ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 67 - CLÁSSICO",
+"RESINA ACRILICA AUTOPOLIMERIZÁVEL AUTODEN 1LT - EVODEN",
+"RESINA ACRILICA AUTOPOLIMERIZÁVEL AUTODEN INCOLOR PO 1KG - CLASSICO",
+"RESINA ACRILICA AUTOPOLIMERIZÁVEL AUTODEN INCOLOR PO 1KG - EVODEN",
+"RESINA ACRILICA AUTOPOLIMERIZÁVEL AUTODEN ROSA PO 250G - EVODEN",
+"RESINA ACRILICA AUTOPOLIMERIZÁVEL JET INCOLOR 1KG - CLASSICO",
+"RESINA ACRÍLICA EM PÓ DURALAY - RELIANCE",
+"RESINA COMPOSTA A1 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA A1 MASTER FLOW - BIODINÂMICA",
+"RESINA COMPOSTA A1 OPALLIS FLOW 4G - FGM",
+"RESINA COMPOSTA A2 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA A2 MASTER FLOW - BIODINÂMICA",
+"RESINA COMPOSTA A2 OPALLIS FLOW 4G - FGM",
+"RESINA COMPOSTA A3 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA A3 MASTER FLOW - BIODINÂMICA",
+"RESINA COMPOSTA A3 OPALLIS FLOW 4G - FGM",
+"RESINA COMPOSTA A3,5 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA A4 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA B1 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA B2 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA B3 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA C1 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA C2 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA C3 MASTER FILL - BIODINÂMICA",
+"RESINA COMPOSTA DA1 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA DA1 LLIS 4G - FGM",
+"RESINA COMPOSTA DA1 OPALLIS - FGM",
+"RESINA COMPOSTA DA1 VITTRA 4G - FGM",
+"RESINA COMPOSTA DA2 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA DA2 LLIS 4G - FGM",
+"RESINA COMPOSTA DA2 VITTRA 4G - FGM",
+"RESINA COMPOSTA DA3 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA DA3 LLIS 4G - FGM",
+"RESINA COMPOSTA DA3 OPALLIS - FGM",
+"RESINA COMPOSTA DA3 VITTRA 4G - FGM",
+"RESINA COMPOSTA DA3,5 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA DA3,5 LLIS 4G - FGM",
+"RESINA COMPOSTA DA3,5 OPALLIS - FGM",
+"RESINA COMPOSTA DA3,5 VITTRA 4G - FGM",
+"RESINA COMPOSTA DA4 OPALLIS - FGM",
+"RESINA COMPOSTA DB1 OPALLIS - FGM",
+"RESINA COMPOSTA DB1 VITTRA 4G - FGM",
+"RESINA COMPOSTA DB2 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA DB2 HERCULITE CLASSIC - KERR",
+"RESINA COMPOSTA DB2 LLIS 4G - FGM",
+"RESINA COMPOSTA DB2 OPALLIS - FGM",
+"RESINA COMPOSTA DB3 HERCULITE CLASSIC - KERR",
+"RESINA COMPOSTA DB4 HERCULITE CLASSIC - KERR",
+"RESINA COMPOSTA DC1 HERCULITE CLASSIC - KERR",
+"RESINA COMPOSTA DC2 FILL MAGIC - VIGODENT",
+"RESINA COMPOSTA DC2 OPALLIS - FGM",
+"RESINA COMPOSTA DC3 HERCULITE CLASSIC - KERR",
+"RESINA COMPOSTA DC3,5 OPALLIS - FGM",
+"RESINA COMPOSTA EA1 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA EA1 LLIS 4G - FGM",
+"RESINA COMPOSTA EA1 VITTRA 4G - FGM",
+"RESINA COMPOSTA EA2 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA EA2 LLIS 4G - FGM",
+"RESINA COMPOSTA EA2 VITTRA 4G - FGM",
+"RESINA COMPOSTA EA3 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA EA3 LLIS 4G - FGM",
+"RESINA COMPOSTA EA3 VITTRA 4G - FGM",
+"RESINA COMPOSTA EA3,5 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA EA3,5 LLIS 4G - FGM",
+"RESINA COMPOSTA EA3,5 VITTRA 4G - FGM",
+"RESINA COMPOSTA EA4 LLIS 4G - FGM",
+"RESINA COMPOSTA EA4 OPALLIS - FGM",
+"RESINA COMPOSTA EB1 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA EB1 LLIS 4G - FGM",
+"RESINA COMPOSTA EB1 VITTRA 4G - FGM",
+"RESINA COMPOSTA EB2 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA COMPOSTA EB2 FILL MAGIC - VIGODENT",
+"RESINA COMPOSTA EB2 LLIS 4G - FGM",
+"RESINA COMPOSTA EB2 OPALLIS - FGM",
+"RESINA COMPOSTA EB3 LLIS 4G - FGM",
+"RESINA COMPOSTA EB3 OPALLIS - FGM",
+"RESINA COMPOSTA EB4 KERR 4G - HERCULITE CLASSIC",
+"RESINA COMPOSTA EC1 FILL MAGIC - VIGODENT",
+"RESINA COMPOSTA EC1 HERCULITE CLASSIC - KERR",
+"RESINA COMPOSTA EC2 FILL MAGIC - VIGODENT",
+"RESINA COMPOSTA EC2 OPALLIS - FGM",
+"RESINA COMPOSTA EC3 FILL MAGIC - VIGODENT",
+"RESINA COMPOSTA EC3 LLIS 4G - FGM",
+"RESINA COMPOSTA EC3 OPALLIS - FGM",
+"RESINA COMPOSTA EC4 FILL MAGIC - VIGODENT",
+"RESINA COMPOSTA RESTAURADOR UNIVERSAL FILTEK Z350 XT COR CT TRANSLUCIDA 4G - 3M",
+"RESINA COMPOSTA SIGMA FLOW A3,5  - DFL",
+"RESINA COMPOSTA SPECTRA SMART 4G  ESMALTE B2 - DENTSPLY SIRONA",
+"RESINA COMPOSTA TRANS-N VITTRA 4G - FGM",
+"RESINA DENTINA B2 EMPRESS DIRECT 3G - IVOCLAR",
+"RESINA OPAK B 0.5 / 1,5G - ANGELUS",
+"REVELADOR RADIOGRÁFICO 475ML - LYSANDA",
+"REVELADOR RADIOGRÁFICO 500ML - CARESTREAM",
+"REVELADOR RADIOGRÁFICO SELEKT+ 500ML - KULZER",
+"SACO DE LIXO HOSPITALAR BRANCO RESIDOS INFECTANTES 60 LITROS C/ 100 UN - FLAIRE",
+"SACO DE LIXO HOSPITALAR PRETO RESIDOS  60 LITROS C/ 100 UN - FLAIRE",
+"SACO TRANSPARENTE GRANDE MULTI USO (SUPORTE PRA GESSO OU PARA ENVIO DE PROTESE ) 25CM X 35CM C 100 UN - S/ MARCA",
+"SAQUINHO CHUP CHUP 5X23 PACOTE C/ 1000",
+"SAQUINHO CHUP CHUP 7X23 PACOTE C/ 1000",
+"SELANTE BIOSEAL FOTOPOLIMERIZAVEL 2,5 G - BIODINÂMICA",
+"SELANTE PREVENT FOTOPOLIMERIZAVEL 2G - FGM",
+"SERINGA 10ML",
+"SERINGA 10ML 1",
+"SERINGA 10ML 2",
+"SERINGA 10ML 3",
+"SERINGA 10ML 5",
+"SERINGA 20ML",
+"SERINGA 5ML 1",
+"SERINGA 5ML 2",
+"SERINGA 5ML 3",
+"SERINGA 5ML 4",
+"SILICONE DE CONDENSACAO CATALISADOR REFLECTION 60ML - COLTENE",
+"SILICONE DE CONDENSACAO CATALISADOR SPEEDEX 60ML - COLTENE",
+"SILICONE DE CONDENSACAO MATERIAL DE IMPRESSAO LIGHT BODY FLUIDO 120G - VIGODENT",
+"SILICONE DE CONDENSACAO MATERIAL DE IMPRESSAO LIGHT BODY REFLECTION 120G - VIGODENT",
+"SILICONE DE CONDENSACAO MATERIAL DE IMPRESSAO SPEEDEX LIGHT BODY FLUIDO 120G - COLTENE",
+"SILICONE DE CONDENSAÇÃO PERFIL  PUTTY MENTA  1 KG - VIGODENT",
+"SILICONE DE CONDENSACAO PERFIL 1 DENSO + 1 CATALISADOR + 1 LIGHT BODY -  SPEEDEX  (KIT)",
+"SILICONE DE CONDENSACAO PERFIL 1 DENSO + 1 CATALISADOR + 1 LIGHT BODY -  VIGODENT   (KIT)",
+"SILICONE DE CONDENSACAO REFLECTION 1 DENSO PUTTY + 1 CATALISADOR + 1 LIGHT BODY -  VIGODENT   (KIT)",
+"SILICONE DE CONDENSAÇÃO REFLECTION PUTTY BLUEBERRY ICE 1 KG - VIGODENT",
+"SILICONE DE CONDENSAÇÃO SPEEDEX DENSO PUTTY 1 KG - COLTENE",
+"SMS 30X30 PCT C/ 100 UN",
+"SMS 50X50 PCT C/ 100 UN - EQUIPEX",
+"SMS 50X50 PCT C/ 50 UN",
+"SMS 50X50 PCT C/ 50 UN - HOSPFLEX",
+"SMS 50X50 PCT C/ 50 UN - VEDA MAX",
+"SMS 50X50 PCT C/ 50 UN .",
+"SMS 70X70 PCT C/ 25 UN",
+"SMS 75X75 PCT C/ 50 UM - VEDA MAX",
+"SMS 75X75 PCT C/ 50 UN",
+"SODA CLORADA 5% HIPOCLORITO DE SÓDIO - IODONTOSUL",
+"SOLUCAO HEMOSTATICA HEMOLIQ - MAQUIRA",
+"SOLUÇÃO HEMOSTÁTICA HEMOLIQ - MAQUIRA",
+"SOLUÇÃO HEMOSTÁTICA HEMOSTANK 10 ML - BIODINÂMICA",
+"SORO FISIOLOGICO 0,9% 1 LITRO - EUROPHARMA",
+"SORO FISIOLOGICO 0,9% 1 LITRO - JP INDUSTRIA",
+"SORO FISIOLOGICO 0,9% 500ML - ARBORETO",
+"SORO FISIOLOGICO 0,9% 500ML - HALEXISTAR",
+"SORO FISIOLOGICO 0,9% 500ML - PLUMAT",
+"SORO FISIOLOGICO 0,9% BOLSA HOSPITALAR PARA INTRAVENOSA 1 LITRO - JP INDUSTRIA",
+"SORO FISIOLOGICO 0,9% BOLSA HOSPITALAR PARA INTRAVENOSA 500ML - HALEXISTAR",
+"SUGADOR DESCARTÁVEL CX C/ 40 UM - SUG PLUS",
+"TELA ORTODONTICA",
+"TESTE DE VITALIDADE CONFRIO RESFRI SPRAY - DCMA",
+"TESTE DE VITALIDADE ENDO ICE SPRAY - MAQUIRA",
+"TESTE DE VITALIDADE ICE TEST SPRAY 220ML - IODONTOSUL",
+"TIRA ABRASIVA DE POLIESTER PARA ACABAMENTO PCT C/150 UM - COMPR. OXIDO ALUMINIO PREVEN",
+"TIRA DE LIXA DE AÇO 4 MM C/ 12 UM - PREVEN",
+"TIRA DE LIXA DE AÇO 4 MM C/ 12 UM - SEM MARCA",
+"TIRA DE LIXA DE AÇO 4X170 C/ 150 UN - INJECTA",
+"TIRA DE LIXA DE AÇO 6MM - INJECTA",
+"TIRA DE LIXA DE AÇO 6MM C/ 12 UN - INJECTA",
+"TIRA DE LIXA DE AÇO PARA ACABAMENTO DE RESINA 4MMX170MM C/ 150 UN - INJECTA",
+"TIRA DE POLIESTER 4MMX170MM C/ 150 UN - S/ MARCA",
+"TIRA DE POLIESTER 4X170 C/ 100 UN - MICRODONT",
+"TIRA DE POLIESTER 4X170 C/ 150 UN - PREVEN",
+"TIRA DE POLIESTER 4X170 C/ 50 UN - MICRODONT",
+"TIRA DE POLIESTER SOF-LEX 4X170 C/ 50 UN - 3M",
+"TIRA DE POLIESTER TRANSPARENTE C/ 50 UN - PREVEN",
+"TIRA DE POLIESTER TRANSPARENTE LISA S/ LIXA 10X120X0,05MM C/50 - KDENT",
+"TIRAS REAGENTES ONE TOUCH SELECT PLUS 50 UN - LIFESCAN",
+"TOUCA DESCARTAVEL BRANCA SANFONADA COM ELASTICO PCT C/ 100 UN",
+"TOUCA DESCARTAVEL BRANCA SANFONADA COM ELASTICO PCT C/ 100 UN - ANADONA",
+"TOUCA DESCARTAVEL BRANCA SANFONADA COM ELASTICO PCT C/ 100 UN - DESCARPACK",
+"TOUCA DESCARTAVEL BRANCA SANFONADA COM ELASTICO PCT C/ 100 UN - DESCARTEE",
+"TOUCA DESCARTAVEL BRANCA SANFONADA COM ELASTICO PCT C/ 100 UN - LAVIE",
+"TOUCA DESCARTAVEL BRANCA SANFONADA COM ELASTICO PCT C/ 100 UN - MEDIX",
+"TOUCA DESCARTAVEL BRANCA SANFONADA COM ELASTICO PCT C/ 100 UN - VABENE",
+"VASELINA LÍQUIDA - ALTARES",
+"VASELINA LÍQUIDA 1 LITRO - RIOQUÍMICA",
+"VASELINA LÍQUIDA 100% GRAU FARMACEUTICO 1 LITRO - RIOQUÍMICA",
+"VASELINA SOLIDA 500G - CINORD",
+"VASELINA SOLIDA 500G - LYSANDA",
+"VASELINA SOLIDA 500G - RIOQUÍMICA",
+"VERNIZ CAVITÁRIO VARNAL 10 ML - BIODINÂMICA",
+"VERNIZ COM FLÚOR FLUORNIZ 10ML + SOLVENTE 10 ML - SS WHITE",
+"VERNIZ COM FLÚOR NIZ 10ML + SOLVENTE DUOFLUORID XII 10 ML - FGM",];
+
+    let db = { residentes: [], atendimentos: [], logs: [], lembreteAdmin: "" };
+    let userLogado = null;
+    let myChart = null;
+    let ultimaAtividade = Date.now();
+    let sessaoBloqueada = false;
+    let timerDisplay, timerLock;
+    let procedimentosCustomizadosFicha = [];
+    let materiaisSelecionadosFicha = []; // Guarda os insumos do atendimento atual
+
+    document.getElementById('btn-ciente-alerta').addEventListener('click', function() {
+        document.getElementById('alerta-coordenador-container').classList.add('hidden');
+    });
+
+    function toggleSection(sectionId) {
+        const section = document.getElementById(sectionId);
+        const content = section.querySelector('.card-collapsible-content');
+        section.classList.toggle('active');
+        content.classList.toggle('hidden');
+    }
+
+    function iniciarSessao(){
+        ultimaAtividade = Date.now();
+        sessaoBloqueada = false;
+        ['mousemove','keydown','click'].forEach(ev=>{ document.addEventListener(ev, resetarAtividade); });
+        clearInterval(timerDisplay); clearInterval(timerLock);
+        timerDisplay = setInterval(atualizarTimerTela, 1000);
+        timerLock = setInterval(verificarInatividade, 10000);
+    }
+    function resetarAtividade(){ if(!sessaoBloqueada) ultimaAtividade = Date.now(); }
+    function atualizarTimerTela(){
+        if(sessaoBloqueada) return;
+        const passados = Math.floor((Date.now() - ultimaAtividade)/1000);
+        const restam = Math.max(0, (TIMEOUT_MIN * 60) - passados);
+        const m = String(Math.floor(restam/60)).padStart(2,'0');
+        const s = String(restam%60).padStart(2,'0');
+        document.getElementById('session-timer-display').innerText = `⏱ ${m}:${s}`;
+    }
+    function verificarInatividade(){
+        if(!sessaoBloqueada && (Date.now() - ultimaAtividade)/60000 >= TIMEOUT_MIN) bloquearSessao();
+    }
+    function bloquearSessao(){ sessaoBloqueada = true; document.getElementById('lock-screen').classList.remove('hidden'); }
+    function desbloquearSessao(){
+        const senha = document.getElementById('lock-pass').value.trim();
+        let ok = false;
+        if(userLogado.role === 'admin' && senha === '1234') ok = true;
+        else { const r = db.residentes.find(x=>x.nome===userLogado.nome); if(r && r.senha===senha) ok=true; }
+        if(ok){ sessaoBloqueada=false; ultimaAtividade=Date.now(); document.getElementById('lock-screen').classList.add('hidden'); } 
+        else { document.getElementById('lock-error').textContent='❌ Senha incorreta.'; }
+    }
+    function logoutManual(){ location.reload(); }
+
+    function fmtTs(isoStr) {
+        if(!isoStr) return '—';
+        const d = new Date(isoStr);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function initIDB() {
+        return new Promise((resolve) => {
+            const request = indexedDB.open(INDEXED_DB_NAME, INDEXED_DB_VER);
+            request.onupgradeneeded = (e) => { e.target.result.createObjectStore(STORE_NAME); };
+            request.onsuccess = (e) => resolve(e.target.result);
+        });
+    }
+    async function save() {
+        const encrypted = CryptoJS.AES.encrypt(JSON.stringify(db), CHAVE_MESTRA).toString();
+        localStorage.setItem(STORAGE_KEY, encrypted);
+        const idb = await initIDB();
+        const tx = idb.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(encrypted, 'main_db');
+    }
+    async function carregarDB() {
+        const idb = await initIDB();
+        return new Promise((res) => {
+            const tx = idb.transaction(STORE_NAME, 'readonly');
+            const req = tx.objectStore(STORE_NAME).get('main_db');
+            req.onsuccess = () => {
+                let data = req.result || localStorage.getItem(STORAGE_KEY);
+                if (!data) return res({residentes:[],atendimentos:[],logs:[],lembreteAdmin:""});
+                try {
+                    const decrypted = CryptoJS.AES.decrypt(data, CHAVE_MESTRA).toString(CryptoJS.enc.Utf8);
+                    res(JSON.parse(decrypted));
+                } catch (e) { res({residentes:[],atendimentos:[],logs:[],lembreteAdmin:""}); }
+            };
+        });
+    }
+
+    function salvarLembreteAdmin() {
+        const texto = document.getElementById('admin-txt-lembrete').value.trim();
+        db.lembreteAdmin = texto;
+        save();
+        registrarLog('ALTERACAO', 'Lembrete da Coordenação atualizado.');
+        alert('📢 Lembrete atualizado com sucesso!');
+    }
+
+    function checarEExibirLembrete() {
+        if (userLogado && userLogado.role === 'residente' && db.lembreteAdmin && db.lembreteAdmin !== "") {
+            document.getElementById('txt-lembrete-exibicao').innerText = db.lembreteAdmin;
+            document.getElementById('alerta-coordenador-container').classList.remove('hidden');
+        }
+    }
+
+    (async function init() { db = await carregarDB(); })();
+
+    function registrarLog(acao, detalhe){
+        db.logs.unshift({ ts: new Date().toISOString(), usuario: userLogado ? userLogado.nome : '—', acao, detalhe, device: navigator.userAgent.substring(0,60) });
+        save();
+    }
+
+    function fmtDataBr(dataIso) {
+        if(!dataIso) return '';
+        const partes = dataIso.split('-');
+        return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : dataIso;
+    }
+
+    function handleLogin(){
+        const u = document.getElementById('login-user').value.trim();
+        const p = document.getElementById('login-pass').value.trim();
+        if(u==='admin' && p==='1234'){
+            userLogado={nome:'admin',role:'admin'};
+            initApp(); return;
+        }
+        let res = db.residentes.find(r=>r.nome.toLowerCase()===u.toLowerCase());
+        if(!res && db.residentes.length === 0) {
+            db.residentes.push({nome: u, senha: p, liberado: true});
+            save();
+            res = db.residentes[0];
+        }
+        if(res && res.liberado && res.senha===p){
+            userLogado={nome:res.nome,role:'residente'};
+            initApp();
+        } else { alert('Acesso inválido.'); }
+    }
+
+    function initApp(){
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('app-section').classList.remove('hidden');
+        document.getElementById('display-user').innerText=userLogado.nome;
+        iniciarSessao();
+        if(userLogado.role==='admin'){
+            document.getElementById('admin-menu').classList.remove('hidden');
+            renderAdmin(); renderGrafico(); renderLog(); renderAdminAtendimentos();
+        } else {
+            document.getElementById('residente-menu').classList.remove('hidden');
+            renderListaProcedimentos(); renderMeusPacientes();
+            checarEExibirLembrete();
+        }
+    }
+
+    /* AUTOCOMPLETE DE MATERIAIS */
+    function filtrarMateriaisAutocomplete(input) {
+        const termo = input.value.toLowerCase();
+        const lista = document.getElementById('lista-sugestoes-materiais');
+        lista.innerHTML = '';
+        if(!termo) { lista.classList.add('hidden'); return; }
+
+        const filtrados = MATERIAIS_BASE.filter(m => m.toLowerCase().includes(termo));
+        if(filtrados.length === 0) { lista.classList.add('hidden'); return; }
+
+        filtrados.forEach(mat => {
+            const li = document.createElement('li');
+            li.innerText = mat;
+            li.onclick = () => {
+                input.value = mat;
+                lista.classList.add('hidden');
+            };
+            lista.appendChild(li);
+        });
+        lista.classList.remove('hidden');
+    }
+
+    function adicionarMaterialLista() {
+        const nome = document.getElementById('input-busca-material').value.trim();
+        const qtd = parseInt(document.getElementById('input-qtd-material').value) || 1;
+
+        if(!nome) { alert('Escolha um material.'); return; }
+
+        const existe = materiaisSelecionadosFicha.find(m => m.nome.toLowerCase() === nome.toLowerCase());
+        if(existe) {
+            existe.qtd += qtd;
+        } else {
+            materiaisSelecionadosFicha.push({ nome, qtd });
+        }
+
+        document.getElementById('input-busca-material').value = '';
+        document.getElementById('input-qtd-material').value = '1';
+        renderTagsMateriais();
+    }
+
+    function renderTagsMateriais() {
+        const container = document.getElementById('container-materiais-escolhidos');
+        container.innerHTML = '';
+        materiaisSelecionadosFicha.forEach((m, idx) => {
+            container.innerHTML += `<span class="material-tag">
+                ${m.nome} (x${m.qtd})
+                <span class="remove-btn" onclick="removerMaterialTag(${idx})">×</span>
+            </span>`;
+        });
+    }
+
+    function removerMaterialTag(idx) {
+        materiaisSelecionadosFicha.splice(idx, 1);
+        renderTagsMateriais();
+    }
+
+    /* PROCESSAMENTO DOS PROCEDIMENTOS */
+    function renderListaProcedimentos(){
+        const grid = document.getElementById('lista-procedimentos'); grid.innerHTML = '';
+        procedimentosCustomizadosFicha = [];
+        PROCEDIMENTOS_BASE.forEach(p => {
+            grid.innerHTML += `<div class="treatment-item">
+                <label><input type="checkbox" onchange="toggleProc(this)"> ${p}</label>
+                <input type="date" class="proc-date-input" data-proc-name="${p}">
+            </div>`;
+        });
+    }
+    
+    function toggleProc(checkbox){
+        const item=checkbox.closest('.treatment-item');
+        item.classList.toggle('selected',checkbox.checked);
+        item.querySelector('.proc-date-input').style.display=checkbox.checked?'block':'none';
+        atualizarContadorProcs();
+    }
+    
+    function atualizarContadorProcs(){
+        const selecionadosPadrao = document.querySelectorAll('.treatment-item.selected').length;
+        const total = selecionadosPadrao + procedimentosCustomizadosFicha.length;
+        document.getElementById('proc-counter').innerHTML=`📋 ${total} procedimento(s) selecionado(s)`;
+    }
+    
+    function filterProcedures(){
+        const term=document.getElementById('search-proc').value.toLowerCase();
+        document.querySelectorAll('.treatment-item').forEach(item=>{
+            const text=item.querySelector('label').innerText.toLowerCase();
+            item.style.display=text.includes(term)?'flex':'none';
+        });
+    }
+
+    function toggleAreaProcedimentoExtra() {
+        const wrapper = document.getElementById('wrapper-proc-extra');
+        wrapper.classList.toggle('hidden');
+    }
+
+    function incluirProcedimentoExtraLista() {
+        const nomeInput = document.getElementById('extra-proc-nome');
+        const dataInput = document.getElementById('extra-proc-data');
+        const nome = nomeInput.value.trim();
+        const data = dataInput.value;
+
+        if (!nome || !data) { alert("Informe o nome e a data."); return; }
+        procedimentosCustomizadosFicha.push({ nome: `✨ ${nome}`, data: data });
+
+        const grid = document.getElementById('lista-procedimentos');
+        const dynamicId = "extra-" + Date.now();
+        grid.insertAdjacentHTML('afterbegin', `
+            <div class="treatment-item selected" id="${dynamicId}">
+                <label style="font-weight: bold; color: var(--teal);"><input type="checkbox" checked onchange="removerProcedimentoExtraElemento('${dynamicId}', '${nome}', '${data}')"> ${nome} (Extra)</label>
+                <input type="date" class="proc-date-input" value="${data}" data-proc-name="${nome}" style="display: block;" disabled>
+            </div>
+        `);
+        nomeInput.value = ''; dataInput.value = '';
+        toggleAreaProcedimentoExtra();
+        atualizarContadorProcs();
+    }
+
+    function removerProcedimentoExtraElemento(elementId, nome, data) {
+        document.getElementById(elementId).remove();
+        procedimentosCustomizadosFicha = procedimentosCustomizadosFicha.filter(p => !(p.nome === `✨ ${nome}` && p.data === data));
+        atualizarContadorProcs();
+    }
+
+    /* SALVAMENTO DO ATENDIMENTO */
+    function registrarAtendimento(){
+        let procs=[...procedimentosCustomizadosFicha];
+        document.querySelectorAll('.treatment-item.selected').forEach(item=>{
+            const input=item.querySelector('.proc-date-input');
+            if(input && input.value && !input.disabled) {
+                procs.push({nome: input.dataset.procName, data: input.value});
+            }
+        });
+        
+        if(procs.length===0){alert("Selecione os procedimentos e informe as datas.");return;}
+
+        const atendimento = {
+            id: Date.now().toString(),
+            residente: userLogado.nome,
+            paciente: document.getElementById('p-nome').value.trim(),
+            cpf: document.getElementById('p-cpf').value.trim(),
+            telefone: document.getElementById('p-tel').value.trim(),
+            dataInicio: document.getElementById('p-data-ini').value,
+            dataFim: document.getElementById('p-data-fim').value,
+            tipo: document.getElementById('p-tipo').value,
+            status: document.getElementById('p-status').value,
+            procedimentos: procs,
+            materiais: [...materiaisSelecionadosFicha] // Vincula os materiais coletados
+        };
+
+        db.atendimentos.push(atendimento);
+        registrarLog('SAVE', `Atendimento e materiais salvos: ${atendimento.paciente}`);
+        alert('✅ ATENDIMENTO E INSUMOS CONFERIDOS E SALVOS COM SUCESSO!');
+        renderMeusPacientes(); limparFormulario();
+    }
+
+    function limparFormulario(){
+        ['p-nome','p-cpf','p-tel','p-data-ini','p-data-fim'].forEach(id=>{document.getElementById(id).value='';});
+        procedimentosCustomizadosFicha = [];
+        materiaisSelecionadosFicha = [];
+        document.getElementById('container-materiais-escolhidos').innerHTML = '';
+        renderListaProcedimentos(); atualizarContadorProcs();
+    }
+
+    function renderMeusPacientes(){
+        const tbody = document.getElementById('body-meus-pacientes'); tbody.innerHTML = '';
+        const filtrados = db.atendimentos.filter(a => a.residente === userLogado.nome);
+        if(!filtrados.length){ tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Nenhum cadastrado.</td></tr>'; return; }
+        filtrados.forEach(a => {
+            tbody.innerHTML += `<tr>
+                <td><strong>${a.paciente}</strong></td>
+                <td>${a.cpf}</td>
+                <td>${fmtDataBr(a.dataInicio)}</td>
+                <td><span class="badge ${a.tipo==='Urgência'?'badge-urgencia':'badge-atend'}">${a.tipo}</span></td>
+                <td>${a.status}</td>
+                <td>
+                    <button onclick="verRelatorio('${a.id}')" class="btn btn-primary btn-sm">👁 Ficha</button>
+                    <button onclick="abrirEdicaoSistema('${a.id}')" class="btn btn-amber btn-sm">✏️ Editar</button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    /* HISTÓRICO / FICHA CLÍNICA */
+    function verRelatorio(id){
+        const a = db.atendimentos.find(x=>x.id===id); if(!a) return;
+        document.getElementById('rel-paciente-info').innerHTML = `<strong>Paciente:</strong> ${a.paciente} | <strong>CPF:</strong> ${a.cpf} | <strong>Status:</strong> ${a.status}`;
+        let tags = a.procedimentos.map(p=>`<span class="rel-proc-tag">🦷 ${p.nome.replace('✨ ', '')} (${fmtDataBr(p.data)})</span>`).join(' ');
+        document.getElementById('rel-corpo').innerHTML = `<h4>Histórico de Procedimentos</h4><div class="rel-proc-list">${tags}</div>`;
+        
+        // Exibição dos Insumos Usados
+        let matRows = (a.materiais || []).map(m => `<li>📦 <strong>${m.nome}</strong> — Qtd: ${m.qtd}</li>`).join('');
+        document.getElementById('rel-materiais-corpo').innerHTML = `<h4>Insumos Utilizados nesta Sessão</h4>
+            <ul style="list-style:none; padding-top:8px; display:grid; gap:6px;">${matRows || '<li>Nenhum insumo registrado.</li>'}</ul>`;
+        
+        abrirModal('relatorio-modal');
+    }
+
+    /* VISÃO ADMINISTRATIVA DE ATENDIMENTOS */
+    function renderAdminAtendimentos() {
+        const tbody = document.getElementById('body-admin-atendimentos'); tbody.innerHTML = '';
+        db.atendimentos.forEach(a => {
+            tbody.innerHTML += `<tr>
+                <td><strong>${a.residente}</strong></td>
+                <td>${a.paciente}</td>
+                <td>${a.cpf}</td>
+                <td><span class="badge ${a.tipo==='Urgência'?'badge-urgencia':'badge-atend'}">${a.tipo}</span></td>
+                <td>${a.status}</td>
+                <td><button onclick="abrirEdicaoSistema('${a.id}')" class="btn btn-amber btn-sm">✏️ Editar</button></td>
+            </tr>`;
+        });
+    }
+
+    /* ENGINE DE FILTROS E RELATÓRIO DE INSUMOS (ADMIN) */
+    function carregarFiltrosMateriaisAdmin() {
+        const select = document.getElementById('admin-filtro-residente');
+        select.innerHTML = '<option value="">-- Todos os Residentes --</option>';
+        
+        // Coleta os residentes distintos que possuem registros
+        const distinct = [...new Set(db.atendimentos.map(a => a.residente))];
+        distinct.forEach(res => {
+            select.innerHTML += `<option value="${res}">${res}</option>`;
+        });
+        gerarRelatorioMateriaisAdmin();
+    }
+
+    function gerarRelatorioMateriaisAdmin() {
+        const filtro = document.getElementById('admin-filtro-residente').value;
+        const tbody = document.getElementById('body-admin-materiais');
+        tbody.innerHTML = '';
+
+        let consolidado = {};
+
+        // Processa base de dados
+        db.atendimentos.forEach(a => {
+            if(filtro && a.residente !== filtro) return;
+
+            (a.materiais || []).forEach(m => {
+                let chave = `${a.residente}_${m.nome}`;
+                if(!consolidado[chave]) {
+                    consolidado[chave] = { residente: a.residente, material: m.nome, qtd: 0, pacientes: new Set() };
+                }
+                consolidado[chave].qtd += m.qtd;
+                consolidado[chave].pacientes.add(a.paciente);
+            });
+        });
+
+        const chaves = Object.keys(consolidado);
+        if(chaves.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum material de consumo encontrado para este filtro.</td></tr>';
+            return;
+        }
+
+        chaves.forEach(k => {
+            let item = consolidado[k];
+            tbody.innerHTML += `<tr>
+                <td><strong>${item.residente}</strong></td>
+                <td>${item.material}</td>
+                <td>${item.qtd}</td>
+                <td><small>${Array.from(item.pacientes).join(', ')}</small></td>
+            </tr>`;
+        });
+    }
+
+    /* EXPORTAÇÃO EXCEL COMPLEMENTAR DE MATERIAIS */
+    function exportarMateriaisExcel() {
+        let dados = [];
+        db.atendimentos.forEach(a => {
+            (a.materiais || []).forEach(m => {
+                dados.push({
+                    "RESIDENTE": a.residente,
+                    "MATERIAL / INSUMO": m.nome,
+                    "QUANTIDADE UTILIZADA": m.qtd,
+                    "PACIENTE VINCULADO": a.paciente,
+                    "CPF PACIENTE": a.cpf,
+                    "DATA ATENDIMENTO": fmtDataBr(a.dataInicio)
+                });
+            });
+        });
+
+        if(dados.length === 0) { alert('Sem dados de materiais para exportar.'); return; }
+        const ws = XLSX.utils.json_to_sheet(dados);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Consumo Insumos");
+        XLSX.writeFile(wb, "Relatorio_Consumo_Materiais.xlsx");
+    }
+
+    /* CONTROLE DE EDIÇÃO INTERNA / MODAL COMPLETO */
+    let materiaisEdicaoLocal = [];
+    
+    function abrirEdicaoSistema(id) {
+        const a = db.atendimentos.find(x => x.id === id);
+        if(!a) return;
+        
+        document.getElementById('edit-atend-id').value = a.id;
+        document.getElementById('edit-p-nome').value = a.paciente;
+        document.getElementById('edit-p-cpf').value = a.cpf;
+        document.getElementById('edit-p-tel').value = a.telefone || '';
+        document.getElementById('edit-p-data-ini').value = a.dataInicio;
+        document.getElementById('edit-p-data-fim').value = a.dataFim || '';
+        document.getElementById('edit-p-tipo').value = a.tipo;
+        document.getElementById('edit-p-status').value = a.status;
+
+        // Limpa áreas extras de modal
+        document.getElementById('wrapper-proc-extra-edicao').classList.add('hidden');
+        
+        // Renderizar procedimentos na edicão
+        const containerProcs = document.getElementById('edit-procs-container'); 
+        containerProcs.innerHTML = '';
+        
+        PROCEDIMENTOS_BASE.forEach(p => {
+            const instancias = a.procedimentos.filter(pr => pr.nome === p);
+            if (instancias.length > 0) {
+                instancias.forEach(inst => clonarLinhaProcedimentoEdicao(p, inst.data, true, false));
+            } else {
+                clonarLinhaProcedimentoEdicao(p, new Date().toISOString().split('T')[0], false, false);
+            }
+        });
+        a.procedimentos.forEach(p => {
+            if (!PROCEDIMENTOS_BASE.includes(p.nome) && !PROCEDIMENTOS_BASE.includes(p.nome.replace('✨ ', ''))) {
+                clonarLinhaProcedimentoEdicao(p.nome, p.data, true, true);
+            }
+        });
+
+        // Carrega materiais do atendimento para edição
+        materiaisEdicaoLocal = JSON.parse(JSON.stringify(a.materiais || []));
+        renderMateriaisEdicao();
+
+        abrirModal('admin-edit-modal');
+    }
+
+    function clonarLinhaProcedimentoEdicao(nomeProc, dataVal, checked, isExtra = false) {
+        const container = document.getElementById('edit-procs-container');
+        const inputId = "edit-proc-dt-" + Date.now() + Math.floor(Math.random() * 1000);
+        let rowStyle = isExtra || nomeProc.startsWith('✨') ? 'background: #e0f7fa; padding: 4px; border-radius:4px;' : '';
+        let labelStyle = isExtra || nomeProc.startsWith('✨') ? 'color:var(--teal); font-weight:600;' : '';
+        let labelExibicao = nomeProc.replace('✨ ', '') + (isExtra || nomeProc.startsWith('✨') ? ' (Extra)' : '');
+
+        container.insertAdjacentHTML('beforeend', `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; ${rowStyle}">
+                <label style="${labelStyle}"><input type="checkbox" class="edit-proc-cb" data-proc-name="${nomeProc}" ${checked ? 'checked' : ''}> ${labelExibicao}</label>
+                <div style="display:flex; align-items:center;">
+                    <input type="date" class="edit-proc-date" id="${inputId}" value="${dataVal}" style="width:130px;">
+                    <button type="button" class="btn-clone-proc" onclick="clonouInstanciaLinha(this, '${nomeProc}', '${inputId}')">(+)</button>
+                </div>
+            </div>
+        `);
+    }
+
+    function clonouInstanciaLinha(botao, nomeProc, inputOriginalId) {
+        const val = document.getElementById(inputOriginalId).value;
+        clonarLinhaProcedimentoEdicao(nomeProc, val, true, nomeProc.startsWith('✨'));
+    }
+
+    function filtrarMateriaisAutocompleteEdicao(input) {
+        const termo = input.value.toLowerCase();
+        const lista = document.getElementById('edit-sugestoes-materiais');
+        lista.innerHTML = '';
+        if(!termo) { lista.classList.add('hidden'); return; }
+        const filtrados = MATERIAIS_BASE.filter(m => m.toLowerCase().includes(termo));
+        filtrados.forEach(mat => {
+            const li = document.createElement('li'); li.innerText = mat;
+            li.onclick = () => { input.value = mat; lista.classList.add('hidden'); };
+            lista.appendChild(li);
+        });
+        lista.classList.remove('hidden');
+    }
+
+    function adicionarMaterialListaEdicao() {
+        const nome = document.getElementById('edit-busca-material').value.trim();
+        const qtd = parseInt(document.getElementById('edit-qtd-material').value) || 1;
+        if(!nome) return;
+        let existe = materiaisEdicaoLocal.find(m => m.nome.toLowerCase() === nome.toLowerCase());
+        if(existe) existe.qtd += qtd; else materiaisEdicaoLocal.push({ nome, qtd });
+        document.getElementById('edit-busca-material').value = '';
+        renderMateriaisEdicao();
+    }
+
+    function renderMateriaisEdicao() {
+        const c = document.getElementById('edit-container-materials'); c.innerHTML = '';
+        materiaisEdicaoLocal.forEach((m, i) => {
+            c.innerHTML += `<span class="material-tag">${m.nome} (x${m.qtd})<span class="remove-btn" onclick="materiaisEdicaoLocal.splice(${i},1); renderMateriaisEdicao();">×</span></span>`;
+        });
+    }
+
+    function salvarAlteracaoSistema() {
+        const id = document.getElementById('edit-atend-id').value;
+        const idx = db.atendimentos.findIndex(x => x.id === id);
+        if(idx === -1) return;
+
+        const novosProcs = [];
+        document.querySelectorAll('.edit-proc-cb').forEach(cb => {
+            if(cb.checked) {
+                const div = cb.closest('div');
+                novosProcs.push({ nome: cb.dataset.procName, data: div.querySelector('.edit-proc-date').value });
+            }
+        });
+
+        db.atendimentos[idx].paciente = document.getElementById('edit-p-nome').value.trim();
+        db.atendimentos[idx].cpf = document.getElementById('edit-p-cpf').value.trim();
+        db.atendimentos[idx].telefone = document.getElementById('edit-p-tel').value.trim();
+        db.atendimentos[idx].dataInicio = document.getElementById('edit-p-data-ini').value;
+        db.atendimentos[idx].dataFim = document.getElementById('edit-p-data-fim').value;
+        db.atendimentos[idx].tipo = document.getElementById('edit-p-tipo').value;
+        db.atendimentos[idx].status = document.getElementById('edit-p-status').value;
+        db.atendimentos[idx].procedimentos = novosProcs;
+        db.atendimentos[idx].materiais = [...materiaisEdicaoLocal]; // Aloca novos materiais alterados
+
+        registrarLog('SAVE', `Registro editado e atualizado: ${db.atendimentos[idx].paciente}`);
+        fecharModal('admin-edit-modal');
+        alert("✅ DADOS E INSUMOS DO ATENDIMENTO ATUALIZADOS!");
+
+        if(userLogado.role==='admin') { renderAdminAtendimentos(); renderAdmin(); renderGrafico(); } else { renderMeusPacientes(); }
+    }
+
+    function toggleAreaProcedimentoExtraEdicao() { document.getElementById('wrapper-proc-extra-edicao').classList.toggle('hidden'); }
+    function incluirProcedimentoExtraEdicaoLista() {
+        const n = document.getElementById('extra-proc-nome-edicao').value.trim();
+        const d = document.getElementById('extra-proc-data-edicao').value;
+        if(!n || !d) return;
+        clonarLinhaProcedimentoEdicao(`✨ ${n}`, d, true, true);
+        document.getElementById('extra-proc-nome-edicao').value = '';
+        toggleAreaProcedimentoExtraEdicao();
+    }
+
+    /* DASHBOARDS ADMIN GERAIS */
+    function renderAdmin(){
+        document.getElementById('stat-total-atend').innerText = db.atendimentos.length;
+        let t=0; db.atendimentos.forEach(a=>t+=(a.procedimentos||[]).length);
+        document.getElementById('stat-total-proc').innerText = t;
+    }
+    function renderGrafico(){
+        if(myChart) myChart.destroy();
+        const ctx = document.getElementById('chartRanking').getContext('2d');
+        myChart = new Chart(ctx, { type: 'bar', data: { labels: ['Atendimentos Totais'], datasets: [{ label: 'Total', data: [db.atendimentos.length], backgroundColor: '#0d6efd' }] } });
+    }
+    function renderLog(){
+        const tbody = document.getElementById('body-log'); tbody.innerHTML = '';
+        db.logs.slice(0,10).forEach(l=>{ tbody.innerHTML += `<tr><td>${fmtTs(l.ts)}</td><td>${l.usuario}</td><td>${l.acao}</td><td>${l.detalhe}</td><td>${l.device}</td></tr>`; });
+    }
+    
+    function exportToExcel(){
+        let dadosExportacao = [];
+        db.atendimentos.forEach(a => {
+            let listaProcedimentos = a.procedimentos || [];
+            if (listaProcedimentos.length === 0) {
+                dadosExportacao.push({ "DATA": fmtDataBr(a.dataInicio), "RESIDENTE": a.residente, "TIPO": a.tipo, "PROCEDIMENTO": "Nenhum", "PACIENTE": a.paciente, "STATUS": a.status, "ID": a.id });
+            } else {
+                listaProcedimentos.forEach(p => {
+                    dadosExportacao.push({ "DATA": fmtDataBr(p.data || a.dataInicio), "RESIDENTE": a.residente, "TIPO": a.tipo, "PROCEDIMENTO": (p.nome || "").replace('✨ ', ''), "PACIENTE": a.paciente, "STATUS": a.status, "ID": a.id });
+                });
+            }
+        });
+        const ws = XLSX.utils.json_to_sheet(dadosExportacao); 
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Atendimentos"); 
+        XLSX.writeFile(wb, "Relatorio_Geral_Atendimentos.xlsx");
+    }
+
+    function abrirModal(id){ document.getElementById(id).classList.remove('hidden'); }
+    function fecharModal(id){ document.getElementById(id).classList.add('hidden'); }
+    function fecharModalFora(e, id){ if(e.target.id === id) fecharModal(id); }
+</script>
+</body>
+</html>

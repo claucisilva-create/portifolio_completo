@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SisOdonto — Gestão, Rastreabilidade e Dispensação</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root {
+            --brand: #0d6efd; 
+            --brand-dark: #0a4fbf; 
+            --brand-light: #e8f1ff;
+            --teal: #0097a7; 
+            --teal-light: #e0f7fa;
+            --green: #2e7d32; 
+            --green-light: #e8f5e9;
+            --red: #c62828; 
+            --red-light: #ffebee;
+            --amber: #e65100; 
+            --amber-light: #fff3e0;
+            --gray-50: #f8fafc; 
+            --gray-100: #f1f5f9; 
+            --gray-200: #e2e8f0;
+            --gray-400: #94a3b8; 
+            --gray-600: #475569; 
+            --gray-800: #1e293b;
+            --white: #ffffff; 
+            --radius: 8px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+            --shadow: 0 4px 16px rgba(0,0,0,.10);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; background: var(--gray-100); color: var(--gray-800); padding-bottom: 50px; }
+        
+        .topbar { background: linear-gradient(135deg, #0d6efd 0%, #0a4fbf 60%, #0097a7 100%); color: white; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
+        .topbar-brand { display: flex; align-items: center; gap: 12px; }
+        .topbar-brand .logo-icon { width: 38px; height: 38px; background: rgba(255,255,255,.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .topbar-brand h1 { font-size: 1.1rem; font-weight: 700; }
+        .topbar-brand small { font-size: .75rem; opacity: .8; display: block; margin-top: 1px; }
+        
+        .app-wrapper { max-width: 1300px; margin: 24px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 24px; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }
+        @media (max-width: 950px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        
+        .card { background: var(--white); border: 1px solid var(--gray-200); border-radius: 12px; padding: 22px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 2px solid var(--gray-100); flex-wrap: wrap; }
+        .card-header .header-info { display: flex; align-items: center; gap: 10px; }
+        .card-header .icon-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+        .card-header h3 { font-size: 1.05rem; color: var(--gray-800); font-weight: 700; }
+        .card-header p { font-size: .82rem; color: var(--gray-600); margin-top: 2px; }
+        
+        .btn-toggle-collapse { background: none; border: none; font-size: 1.2rem; padding: 4px 8px; color: var(--gray-600); cursor: pointer; border-radius: 4px; transition: background 0.2s; }
+        .btn-toggle-collapse:hover { background: var(--gray-100); }
+        .card-body-collapsible { display: flex; flex-direction: column; }
+        .card-body-collapsible.collapsed { display: none !important; }
+        .card-header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .search-filter-input { padding: 6px 12px; border: 1.5px solid var(--gray-200); border-radius: var(--radius); font-size: .85rem; width: 220px; transition: all .2s; }
+        .search-filter-input:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px rgba(13,110,253,.15); }
+
+        .row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+        .field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 150px; position: relative; }
+        .field label { font-size: .8rem; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: .4px; }
+        .field label .req { color: var(--red); margin-left: 2px; }
+        .field input, .field select, .field textarea { padding: 9px 12px; border: 1.5px solid var(--gray-200); border-radius: var(--radius); font-size: .9rem; background: var(--white); color: var(--gray-800); transition: all .2s; width: 100%; }
+        .field input:focus, .field select:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px rgba(13,110,253,.15); }
+        
+        .input-group { display: flex; gap: 6px; width: 100%; }
+        
+        .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius); max-height: 220px; overflow-y: auto; z-index: 999; box-shadow: var(--shadow); list-style: none; margin-top: 2px; }
+        .suggestions-list li { padding: 10px 12px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid var(--gray-100); }
+        .suggestions-list li:hover { background: var(--brand-light); color: var(--brand-dark); }
+        .suggestions-list li.add-new-prompt { background: var(--teal-light); color: var(--teal); font-weight: 600; }
+        .suggestions-list li.add-new-prompt:hover { background: var(--teal); color: white; }
+        
+        button { cursor: pointer; border: none; border-radius: var(--radius); font-weight: 600; transition: all .2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn { padding: 10px 18px; font-size: .85rem; }
+        .btn-primary { background: var(--brand); color: white; }
+        .btn-primary:hover { background: var(--brand-dark); }
+        .btn-success { background: var(--green); color: white; }
+        .btn-success:hover { background: #1b5e20; }
+        .btn-teal { background: var(--teal); color: white; }
+        .btn-teal:hover { background: #00838f; }
+        .btn-amber { background: var(--amber); color: white; }
+        .btn-amber:hover { background: #bf4300; }
+        .btn-danger { background: var(--red); color: white; padding: 5px 10px; font-size: 0.78rem; }
+        .btn-danger:hover { background: #b71c1c; }
+        .btn-secondary { background: var(--gray-200); color: var(--gray-800); }
+        .btn-secondary:hover { background: var(--gray-400); }
+        .btn-full { width: 100%; padding: 12px; font-size: 0.95rem; }
+        .btn-icon { padding: 9px 12px; background: var(--gray-200); color: var(--gray-800); font-size: 1.1rem; }
+        .btn-icon:hover { background: var(--gray-400); }
+        
+        table { width: 100%; border-collapse: collapse; font-size: .85rem; text-align: left; }
+        th { background: var(--gray-800); color: white; padding: 10px 12px; font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .3px; }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); color: var(--gray-800); vertical-align: middle; }
+        tr:hover td { background: var(--gray-50); }
+        tr.filtered-out { display: none !important; }
+        
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .badge-active { background: var(--green-light); color: var(--green); }
+        .badge-depleted { background: var(--red-light); color: var(--red); }
+        
+        .pao-badge { font-weight: 700; padding: 3px 6px; border-radius: 4px; font-size: 0.78rem; display: inline-block; }
+        .pao-ok { background: var(--green-light); color: var(--green); }
+        .pao-critico { background: var(--amber-light); color: var(--amber); }
+        .pao-vencido { background: var(--red-light); color: var(--red); }
+        .pao-indefinido { background: var(--gray-100); color: var(--gray-600); font-weight: normal; }
+
+        .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+        .stat-chip { flex: 1; min-width: 120px; background: linear-gradient(135deg, var(--gray-800) 0%, var(--gray-600) 100%); color: white; border-radius: 10px; padding: 12px; text-align: center; }
+        .stat-chip .stat-label { font-size: .7rem; opacity: .85; text-transform: uppercase; }
+        .stat-chip .stat-value { font-size: 1.4rem; font-weight: 700; margin-top: 2px; }
+
+        .btn-action-sm { padding: 4px 8px; font-size: 0.75rem; font-weight: 600; border-radius: 4px; }
+        .table-wrap { overflow-x: auto; background: var(--white); border: 1px solid var(--gray-200); border-radius: 8px; margin-top: 8px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; transition: all 0.3s; }
+        .modal-box { background: var(--white); border-radius: 12px; width: 100%; max-width: 450px; padding: 24px; box-shadow: var(--shadow); animation: fadeIn 0.2s ease-out; }
+        .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
+        .hidden { display: none !important; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <div class="topbar-brand">
+            <div class="logo-icon">📦</div>
+            <div>
+                <h1>SisOdonto — Rastreabilidade Avançada</h1>
+                <small>Controle de Dispensação Clínica e Ciclo de Insumos</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-wrapper">
+        
+        <div class="dashboard-grid">
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="header-info">
+                        <div class="icon-circle" style="background: var(--brand-light); color: var(--brand);">🩺</div>
+                        <div>
+                            <h3>Dispensar Insumo Clínico</h3>
+                            <p>Vincule o lote ativo ao prontuário do paciente e registre quem realizou a liberação.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="form-saida" onsubmit="salvarSaida(event)">
+                    <div class="row">
+                        <div class="field" style="flex: 2;">
+                            <label>Material / Insumo <span class="req">*</span></label>
+                            <input type="text" id="item-nome" placeholder="Digite o nome do material (ex: Lidocaína, Agulha...)" autocomplete="off" oninput="filtrarMateriais(this)" required>
+                            <ul id="sugestoes-materiais" class="suggestions-list hidden"></ul>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="field" style="flex: 2;">
+                            <label>Lote de Origem Disponível <span class="req">*</span></label>
+                            <div class="input-group">
+                                <select id="item-lote-select" onchange="atualizarUnidadeDoLote()" required>
+                                    <option value="">-- Selecione primeiro o material --</option>
+                                </select>
+                                <button type="button" class="btn btn-icon" title="Cadastrar Novo Lote para este material" onclick="abrirModalLote()">➕</button>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Quantidade <span class="req">*</span></label>
+                            <input type="number" id="item-qtd" min="1" value="1" required>
+                        </div>
+                        <div class="field">
+                            <label>Unidade de Saída</label>
+                            <input type="text" id="item-unidade-display" style="background: var(--gray-100); font-weight: 600; color: var(--teal);" readonly value="-">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="field">
+                            <label>Prontuário do Paciente <span class="req">*</span></label>
+                            <div class="input-group">
+                                <input type="text" id="paciente-prontuario" placeholder="Nº Prontuário" oninput="buscarPacientePorProntuario(this.value)" required>
+                                <button type="button" class="btn btn-icon" title="Importar Planilha de Prontuários (Excel)" onclick="document.getElementById('input-excel-pacientes').click()">📥</button>
+                                <input type="file" id="input-excel-pacientes" accept=".xlsx, .xls" style="display: none;" onchange="importarPlanilhaPacientes(event)">
+                            </div>
+                        </div>
+                        <div class="field" style="flex: 1.5;">
+                            <label>Nome do Paciente</label>
+                            <input type="text" id="paciente-nome-display" placeholder="⚠️ Prontuário não cadastrado" style="background: var(--gray-100); font-weight: 600;" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="field">
+                            <label>Quem Dispensou? <span class="req">*</span></label>
+                            <input type="text" id="profissional-nome" placeholder="Nome ou Registro" autocomplete="off" oninput="filtrarProfissionais(this)" required>
+                            <ul id="sugestoes-profissionais" class="suggestions-list hidden"></ul>
+                        </div>
+                        <div class="field">
+                            <label>Data de Liberação <span class="req">*</span></label>
+                            <input type="date" id="item-data" required>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-full" style="margin-top: 8px;">💾 Confirmar Lançamento e Saída</button>
+                </form>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="header-info">
+                        <div class="icon-circle" style="background: var(--teal-light); color: var(--teal);">📊</div>
+                        <div>
+                            <h3>Monitor do Lote Selecionado</h3>
+                            <p>Veja os dados atuais do lote selecionado acima.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-row">
+                    <div class="stat-chip">
+                        <div class="stat-label">Data Abertura</div>
+                        <div class="stat-value" id="mon-data-abertura" style="font-size: 1.1rem; padding: 4px 0;">--</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-label">Saídas Lançadas</div>
+                        <div class="stat-value" id="mon-total-saidas">0</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-label">Qtd Consumida</div>
+                        <div class="stat-value" id="mon-total-qtd">0</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: auto; padding-top: 15px; border-top: 1px dashed var(--gray-200); text-align: center;">
+                    <p style="font-size: 0.8rem; color: var(--gray-600); margin-bottom: 8px;">Se o produto físico deste lote específico chegou ao fim na clínica, encerre-o para calcular a durabilidade:</p>
+                    <button type="button" id="btn-esgotar-lote" class="btn btn-amber btn-full" disabled onclick="marcarLoteComoEsgotado()">⚠️ Marcar Lote Atual como Esgotado</button>
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- RELATÓRIO DE CICLO DE VIDA E RENDIMENTO DOS LOTES -->
+        <div class="card">
+            <div class="card-header">
+                <div class="header-info">
+                    <div class="icon-circle" style="background: var(--amber-light); color: var(--amber);">📋</div>
+                    <div>
+                        <h3>Relatório de Ciclo de Vida e Rendimento dos Lotes</h3>
+                        <p>Mapeamento completo de durabilidade e auditoria para o setor de compras.</p>
+                    </div>
+                </div>
+                <div class="card-header-actions">
+                    <input type="text" id="filtro-tabela-lotes" class="search-filter-input" placeholder="🔍 Filtrar lote ou material..." oninput="filtrarTabelaLotes(this.value)">
+                    <button onclick="exportarExcelLotes()" class="btn btn-success">📥 Excel Geral de Lotes</button>
+                    <button onclick="exportarPDFLotes()" class="btn btn-danger">📄 PDF Relatório Auditoria</button>
+                    <button type="button" class="btn-toggle-collapse" onclick="toggleCollapse('body-lotes', this)" title="Recolher / Expandir">▼</button>
+                </div>
+            </div>
+            
+            <div id="body-lotes" class="card-body-collapsible">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Material</th>
+                                <th>Lote</th>
+                                <th>Status</th>
+                                <th>Abertura</th>
+                                <th>Fechamento</th>
+                                <th>Duração</th>
+                                <th>Validade Pós-Abertura</th>
+                                <th>Total Saídas</th>
+                                <th>Total Volumetria</th>
+                                <th>Média/Saída</th>
+                                <th style="text-align: center;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-lotes-status"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- HISTÓRICO DETALHADO DE DISPENSAÇÕES CLÍNICAS -->
+        <div class="card">
+            <div class="card-header">
+                <div class="header-info">
+                    <div class="icon-circle" style="background: var(--green-light); color: var(--green);">⏳</div>
+                    <div>
+                        <h3>Histórico Detalhado de Dispensações Clínicas</h3>
+                        <p>Rastreabilidade completa de liberação por paciente e profissional.</p>
+                    </div>
+                </div>
+                <div class="card-header-actions">
+                    <input type="text" id="filtro-tabela-movimentacoes" class="search-filter-input" placeholder="🔍 Filtrar lote ou produto..." oninput="filtrarTabelaMovimentacoes(this.value)">
+                    <button onclick="exportarExcelMovimentacoes()" class="btn btn-secondary btn-sm">📥 Exportar Log de Saídas</button>
+                    <button type="button" class="btn-toggle-collapse" onclick="toggleCollapse('body-movimentacoes', this)" title="Recolher / Expandir">▼</button>
+                </div>
+            </div>
+            
+            <div id="body-movimentacoes" class="card-body-collapsible">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Saída</th>
+                                <th>Insumo / Material</th>
+                                <th>Lote</th>
+                                <th>Qtd</th>
+                                <th>Unidade</th>
+                                <th>Prontuário</th>
+                                <th>Nome do Paciente</th>
+                                <th>Dispensador</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-movimentacoes"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    <div id="modal-lote" class="modal-overlay hidden">
+        <div class="modal-box">
+            <h3 id="modal-lote-titulo" style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">📦 Novo Lote de Insumo</h3>
+            <p style="font-size: 0.82rem; color: var(--gray-600); margin-bottom: 16px;" id="modal-material-titulo">Material: </p>
+            
+            <form id="form-novo-lote" onsubmit="salvarModalLote(event)">
+                <input type="hidden" id="modal-edit-index" value="">
+                <input type="hidden" id="modal-edit-original-id" value="">
+
+                <div class="field" style="margin-bottom: 12px;">
+                    <label>Identificação / Código do Lote <span class="req">*</span></label>
+                    <input type="text" id="modal-lote-id" placeholder="Ex: LOT-2026-01" required>
+                </div>
+                
+                <div class="row">
+                    <div class="field">
+                        <label>Data de Abertura <span class="req">*</span></label>
+                        <input type="date" id="modal-lote-data" required>
+                    </div>
+                    <div class="field">
+                        <label>Unidade de Saída <span class="req">*</span></label>
+                        <select id="modal-lote-unidade" required>
+                            <option value="Frasco">Frasco</option>
+                            <option value="Gota">Gota</option>
+                            <option value="Fio">Fio</option>
+                            <option value="Grama">Grama</option>
+                            <option value="Cápsula">Cápsula</option>
+                            <option value="Bisnaga">Bisnaga</option>
+                            <option value="Rolo">Rolo</option>
+                            <option value="Unidade">Unidade</option>
+                            <option value="Mililitro (ml)">Mililitro (ml)</option>
+                            <option value="Ampola">Ampola</option>
+                            <option value="Tubete">Tubete</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row hidden" id="row-modal-fechamento">
+                    <div class="field">
+                        <label>Data de Fechamento (Esgotado)</label>
+                        <input type="date" id="modal-lote-fechamento">
+                    </div>
+                    <div class="field">
+                        <label>Status</label>
+                        <select id="modal-lote-status">
+                            <option value="ATIVO">ATIVO</option>
+                            <option value="ESGOTADO">ESGOTADO</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalLote()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-modal-salvar">Salvar Lote</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const padraoMateriais = [
+            "ABAIXADOR DE LINGUA C/ 100 UN", 
+            "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 60", 
+            "ADESIVO AMBAR UNIVERSAL APS 5ML - FGM", 
+            "ADESIVO SINGLE BOND UNIVERSAL 5 ML - 3M", 
+            "AGUA OXIGENADA 10 VOL 1 LT - RIOQUIMICA", 
+            "AGULHA GENGIVAL CURTA 0,30X22MM CX C/ 100 UN - PHS SR"
+        ];
+
+        const REGRAS_VALIDADE_APOS_ABERTURA = {
+            "RESINA ACRILICA AUTOPOLIMERIZÁVEL AUTODEN INCOLOR PO 1KG - CLASSICO": 270, "RESINA ACRILICA AUTOPOLIMERIZÁVEL AUTODEN INCOLOR PO 1KG - EVODEN": 270, "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 60 - CLÁSSICO": 180, "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 62 - CLÁSSICO": 180, "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 66 - CLÁSSICO": 180, "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 69 - CLÁSSICO": 180, "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 62 - CLÁSSICO": 180, "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 65 - CLÁSSICO": 180, "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 66 - CLÁSSICO": 180, "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 78 G COR 69 - CLÁSSICO": 180, "ACRILICA AUTO POLIMERIZANTE PO 25 G COR VERMELHO - DENCRILAY": 180, "ACRILICO AUTO POLIMERIZANTE COR ROSA 220G JET - CLASSICO": 180, "ADESIVO AMBAR UNIVERSAL APS 5ML - FGM": 270, "ADESIVO MAGIC BOND ESMALTE 5ML - VIGODENT": 270, "ADESIVO PARA MOLDEIRA UNIVERSAL TRAY 10 ML - ZHERMACK": 270, "ADESIVO PARA MOLDEIRA UNIVERSAL TRAY 14 ML - BOSWORTH": 270, "ADESIVO SINGLE BOND UNIVERSAL - 5M": 270, "ADESIVO SINGLE BOND UNIVERSAL - 3M": 270, "AGENTE DE UNIÃO SILANO PROSIL - FGM": 270, "AGENTE DE UNIÃO SILANO PROSIL - LYSANDA": 270, "AGENTE DE UNIÃO SILANO PROSIL - MICRODONT": 270, "ÁLCOOL ISOPROPÍLICO 1 LT – MAGAZINE MEDICA.COM": 180, "ÁLCOOL ISOPROPÍLICO P.A.-A.C.S. 1 LT – SYNTH": 180, "ANESTESICO TOPICO GEL BENZOTOP 200MG TUTTI-FRUTTI - DFL": 180, "ANESTÉSICO TÓPICO GEL BENZOTOP 200MG TUTTI-FRUTTI 30 G - DFL": 180, "ANTISSEPTICO CLOREXIDINA CHLORCLEAR 2% SOLUÇÃO ALCOOLICA 1LT - VIC PHARMA": 180, "ANTISSEPTICO CLOREXIDINA DEGERMANTE 2% SOLUÇÃO TENSOATIVOS 1LT - RIOQUÍMICA": 180, "BARREIRA GENGIVAL FOTOPOLIMERIZAVEL GEL 2G / BLUE TOP DAM - FGM": 180, "BARREIRA GENGIVAL FOTOPOLIMERIZAVEL LYSDAM GEL 2,5G - LYSANDA": 180, "BICARBONATO DE SODIO AIRON 200 G - MAQUIRA": 180, "BICARBONATO DE SODIO AIRON 500 G - MAQUIRA": 180, "BICARBONATO DE SODIO CX C/ UN 40 G - CLEAN OKTA": 180, "CARBONO LÍQUIDO SUPER FILME 10 ML + SOLVENTE 20 ML - KOTA": 180, "CARIOSTÁTICO CARIESTOP 30% - BIODINÂMICA": 180, "CIMENTO CIRURGICO LIQ. SURGICAL CEMENTE 20 ML - MAQUIRA": 180, "CIMENTO CIRÚRGICO PERICEM 1 BASE 90G + 1 ACELERADOR 90G - MAQUIRA": 180, "CIMENTO CIRURGICO PO SURGICAL CEMENTE 50 G - MAQUIRA": 180, "CIMENTO DE ZINCO 10 ML - SS WHITE": 180, "CIMENTO DE ZINCO LS 10 ML - COLTENE": 180, "CIMENTO DE ZINCO LS 10 ML - VIGODENT": 180, "CIMENTO DE ZINCO LS PO 28 G - COLTENE": 180, "CIMENTO DE ZINCO LS PO 28 G - VIGODENT": 180, "CIMENTO DE ZINCO PO 28 G - SS WHITE": 180, "CIMENTO ENDODÔNTICO ENDOFILL LIQ. 10ML + PO 12G - DESTSPLY (KIT)": 270, "CIMENTO ENDODÔNTICO ENDOFILL PO 12G (ITEM DE KIT SEPARADO ) - DESTSPLY": 270, "CIMENTO ENDODÔNTICO FILL CANAL EM PO 12 G - MAQUIRA": 270, "CIMENTO ENDODÔNTICO FILL CANAL OBTURAÇÃO LÍQUIDO 10 ML - MAQUIRA": 270, "CIMENTO OBTURADOR PROVISÓRIO FLUOR 25G - VILLEVIE": 180, "CIMENTO OBTURADOR PROVISÓRIO NORMAL 25G - VILLEVIE": 180, "CIMENTO PROVISORIO HIDRÓXIDO DE CÁLCIO (HYDRO C) + CATALIZADOR - DENTSPLY (KIT)": 180, "CIMENTO PROVISORIO HIDROXIDO DE CALCIO HYDCAL + CATALIZADOR - MAQUIRA (KIT)": 180, "CIMENTO PROVISORIO PROVICOL 2 TUBOS DE 25 G - VOCO": 180, "CIMENTO PROVISORIO PULPOSAN 20 ML - SS WHITE": 270, "CIMENTO PROVISORIO PULPOSAN PO 50 G - SS WHITE": 270, "CIMENTO REPARADOR MTA BRANCO 2 DOSES 0,28G - ANGELUS": 180, "CIMENTO RESINOSO DUAL ALLCEM BASE + CATALISADOR A2 5G - FGM": 180, "CIMENTO RESINOSO DUAL ALLCEM BASE A2 2,5G - FGM": 180, "CIMENTO RESINOSO DUAL ALLCEM CATALISADOR 2,5G - FGM": 180, "CIMENTO RESINOSO DUAL RELYX U200 - 3M": 180, "CONDICIONADOR ÁCIDO CONDAC PORCELANA 10% - FGM": 180, "CONDICIONADOR ÁCIDO CONDAC PORCELANA 5% - FGM": 180, "CONDICIONADOR ÁCIDO FOSFÓRICO 35% UN GLUMA - KULZER (COMBO C/ 3UN)": 180, "CONDICIONADOR ÁCIDO FOSFÓRICO 37% PCT C/ 3 UN - MICRODONT (UNIDADES)": 180, "CONDICIONADOR ÁCIDO FOSFÓRICO 37% UN - FGM (COMBO C/ 3UN)": 180, "CONDICIONADOR ÁCIDO FOSFÓRICO 37% UN - LYSAC GEL (UNIDADES)": 180, "CONDICIONADOR ÁCIDO FOSFÓRICO 37% UN - VIGODENTE (COMBO C/ 3UN)": 180, "COREGA ULTRA MAX FIXAÇÃO + REFRESCANCIA 40 G - GSK": 180, "COREGA ULTRA MAX FIXAÇÃO 20 G - HALEON": 180, "COREGA ULTRA MAX FIXAÇÃO 40 G - GSK": 180, "DESSENSIBILIZANTE DESENSIBILIZE KF 0,2% 2,5G - FGM": 180, "E.D.T.A TRISSÓDICO LÍQUIDO - BIODINÂMICA": 270, "ESPONJA HEMOSTATICA HEMOSPON CX C/ 10 - MAQUIRA": 180, "EUCALIPTOL 10 ML - BIODINÂMICA": 270, "EUGENOL 20 ML - BIODINÂMICA": 270, "EVICÁRIE 10 ML - BIODINAMICA": 270, "EVIDENCIADOR DE PLACA EVIPLAC - BIODINÂMICA": 180, "FLUOR EM GEL 200 ML - MAQUIRA": 180, "FORMOCRESOL - BIODINÂMICA": 180, "GLICERINA LIQUIDA P.A ACS 1LT - EXODO": 270, "HIDROXIDO DE CALCIO P.A. - BIODINAMICA": 180, "IODOFORMIO 10 G - BIODINAMICA": 180, "IODOPOVIDONA RIODEINE DERMO SUAVE DEGERMANTE 1LT- RIOQUÍMICA": 270, "IONÔMERO DE VIDRO CIMENTAÇÃO MAXXION C - FGM (KIT) (EMBALAGEM LARANJA)": 180, "IONOMERO DE VIDRO FORRADOR IONOSEAL - VOCO": 180, "IONÔMERO DE VIDRO RESTAURADOR E FORRADOR VITRO FIL LC R COR A3 - DFL (KIT)": 180, "IONÔMERO DE VIDRO RESTAURADOR MAXXION R 8ML - FGM (EMBALAGEM VERDE)": 180, "IONÔMERO DE VIDRO RESTAURADOR MAXXION R COR A2 - FGM (KIT)": 180, "IONÔMERO DE VIDRO RESTAURADOR MAXXION R COR A2 PO 10 G - FGM": 180, "IONÔMERO DE VIDRO RESTAURADOR RIVA LIGHT CURE 15g po + 8g - SDI": 180, "IONÔMERO DE VIDRO RESTAURADOR RIVA LIGHT CURE 5g po + 3g - SDI": 180, "METALPIN CX C/ 30 TAM. P,M,G": 180, "OMCILON-A ORAL BASE CREME 30G": 180, "OMCILON-A ORAL BASE PASTA 10G": 180, "OTOSPORIN 10ML - FQM": 270, "ÓXIDO DE ZINCO 50G - BIODINÂMICA": 180, "PARAMONOCLOROFENOL CANFORADO - BIODINÂMICA": 180, "PASTA DE DENTE": 180, "PASTA DE IMPRESSAO A BASE DE OXIDO DE ZINCO E EUGENOL LS - VIGODENT": 180, "PASTA DIAMANTADA PARA POLIMENTO DENTAL - LYSDIAMOND": 270, "PASTA PROFILATICA SHINE TUTTI-FRUTTI 90 G - MAQUIRA": 180, "PEDRA POMES - ASFER": 180, "PERIOPLAK CLOREXIDINA 0,12% MENTA 1,1LT - REYMER": 180, "PINO DE FIBRA DE VIDRO REFORPOST N° 1 - ANGELUS": 180, "PINO DE FIBRA DE VIDRO SYSTEM WHITEPOST DC 1 REFIL - FGM": 270, "PINO PARA MOLDAGEM PINJET PCT C/ 50 UN - ANGELUS": 180, "PONTA DE GUTTA PERCHA F 28MM (100 UNIDADES) - ODOUS DE DEUS": 270, "REEMBASADOR SOFT PROVISORIO 30G DE PO + 30ML + 8ML - TDV (KIT)": 270, "RESINA ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR VERMELHO - CLÁSSICO": 180, "RESINA ACRILICA AUTOPOLIMERIZÁVEL JET INCOLOR 1KG - CLASSICO": 180, "RESINA COMPOSTA A1 EMPRESS DIRECT 3G - IVOCLAR": 270, "RESINA COMPOSTA A1 MASTER FILL - BIODINÂMICA": 270, "RESINA COMPOSTA A2 OPALLIS FLOW 4G - FGM": 270, "RESINA COMPOSTA A3 EMPRESS DIRECT 3G - IVOCLAR": 270, "RESINA COMPOSTA DA2 LLIS 4G - FGM": 270, "RESINA OPAK B 0.5 / 1,5G - ANGELUS": 180, "SELANTE BIOSEAL FOTOPOLIMERIZAVEL 2,5 G - BIODINÂMICA": 180, "SODA CLORADA 5% HIPOCLORITO DE SÓDIO - IODONTOSUL": 180, "SOLUCAO HEMOSTATICA HEMOLIQ - MAQUIRA": 180, "TESTE DE VITALIDADE ENDO ICE SPRAY - MAQUIRA": 180, "TIRA DE LIXA DE AÇO 4 MM C/ 12 UM - PREVEN": 180, "TIRA DE POLIESTER 10X120X0,05MM C/50 - KDENT": 180, "VASELINA LÍQUIDA - RIOQUÍMICA": 270, "VASELINA SOLIDA 500G - CINORD": 270, "VERNIZ CAVITÁRIO VARNAL 10 ML - BIODINÂMICA": 180, "VERNIZ COM FLÚOR FLUORNIZ 10ML + SOLVENTE 10 ML - SS WHITE": 180, "ACRILICA AUTO POLIMERIZANTE DENCÔR PO 25 G COR 61 - CLÁSSICO": 270
+        };
+
+        let localSalvo = localStorage.getItem('sisodonto_catalogo_itens');
+        if (localSalvo) {
+            let parsedLocal = JSON.parse(localSalvo);
+            let possuiTodos = padraoMateriais.every(item => parsedLocal.includes(item.toUpperCase()));
+            if (!possuiTodos) {
+                let novaListaMesclada = Array.from(new Set([...padraoMateriais, ...parsedLocal]));
+                localStorage.setItem('sisodonto_catalogo_itens', JSON.stringify(novaListaMesclada));
+            }
+        } else {
+            localStorage.setItem('sisodonto_catalogo_itens', JSON.stringify(padraoMateriais));
+        }
+
+        let MATERIAIS_CATALOGO = JSON.parse(localStorage.getItem('sisodonto_catalogo_itens'));
+        let dbLotes = JSON.parse(localStorage.getItem('sisodonto_lotes_v2')) || [];
+        let dbDispensacoes = JSON.parse(localStorage.getItem('sisodonto_dispensacoes_v2')) || [];
+        let dbPacientes = JSON.parse(localStorage.getItem('sisodonto_pacientes')) || {};
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('item-data').value = hoje;
+            document.getElementById('modal-lote-data').value = hoje;
+            atualizarInterface();
+            
+            document.addEventListener('click', (e) => {
+                if (e.target.id !== 'profissional-nome') {
+                    document.getElementById('sugestoes-profissionais').classList.add('hidden');
+                }
+            });
+        });
+
+        // RECOLHER / EXPANDIR CARDS
+        function toggleCollapse(bodyId, button) {
+            const body = document.getElementById(bodyId);
+            body.classList.toggle('collapsed');
+            button.textContent = body.classList.contains('collapsed') ? '▲' : '▼';
+        }
+
+        // FILTROS DAS TABELAS
+        function filtrarTabelaLotes(termo) {
+            const busca = termo.trim().toLowerCase();
+            const linhas = document.querySelectorAll('#tabela-lotes-status tr');
+            
+            linhas.forEach(linha => {
+                if (!busca) {
+                    linha.classList.remove('filtered-out');
+                    return;
+                }
+                const textoMaterial = linha.cells[0]?.textContent.toLowerCase() || '';
+                const textoLote = linha.cells[1]?.textContent.toLowerCase() || '';
+                
+                if (textoMaterial.includes(busca) || textoLote.includes(busca)) {
+                    linha.classList.remove('filtered-out');
+                } else {
+                    linha.classList.add('filtered-out');
+                }
+            });
+        }
+
+        function filtrarTabelaMovimentacoes(termo) {
+            const busca = termo.trim().toLowerCase();
+            const linhas = document.querySelectorAll('#tabela-movimentacoes tr');
+            
+            linhas.forEach(linha => {
+                if (!busca) {
+                    linha.classList.remove('filtered-out');
+                    return;
+                }
+                const textoMaterial = linha.cells[1]?.textContent.toLowerCase() || '';
+                const textoLote = linha.cells[2]?.textContent.toLowerCase() || '';
+                
+                if (textoMaterial.includes(busca) || textoLote.includes(busca)) {
+                    linha.classList.remove('filtered-out');
+                } else {
+                    linha.classList.add('filtered-out');
+                }
+            });
+        }
+
+        // HISTÓRICO E AUTO-COMPLETE DE PROFISSIONAIS
+        function obterProfissionaisDoLog() {
+            const lista = dbDispensacoes.map(d => d.dispensador.trim());
+            return Array.from(new Set(lista)).filter(Boolean);
+        }
+
+        function filtrarProfissionais(input) {
+            const busca = input.value.trim().toLowerCase();
+            const listaElement = document.getElementById('sugestoes-profissionais');
+            listaElement.innerHTML = '';
+
+            const profissionaisSalvos = obterProfissionaisDoLog();
+            if (profissionaisSalvos.length === 0) {
+                listaElement.classList.add('hidden');
+                return;
+            }
+
+            const filtrados = profissionaisSalvos.filter(p => p.toLowerCase().includes(busca));
+
+            if (filtrados.length === 0) {
+                listaElement.classList.add('hidden');
+                return;
+            }
+
+            filtrados.slice(0, 5).forEach(p => {
+                const li = document.createElement('li');
+                li.textContent = p;
+                li.onclick = () => {
+                    input.value = p;
+                    listaElement.classList.add('hidden');
+                };
+                listaElement.appendChild(li);
+            });
+
+            listaElement.classList.remove('hidden');
+        }
+
+        function buscarPacientePorProntuario(prontuarioRaw) {
+            const prontuario = prontuarioRaw.trim();
+            const inputNome = document.getElementById('paciente-nome-display');
+            
+            if (!prontuario) {
+                inputNome.value = "";
+                inputNome.placeholder = "⚠️ Prontuário não cadastrado";
+                return;
+            }
+
+            if (dbPacientes[prontuario]) {
+                inputNome.value = dbPacientes[prontuario];
+            } else {
+                inputNome.value = "";
+                inputNome.placeholder = "⚠️ Não encontrado na base carregada";
+            }
+        }
+
+        function importarPlanilhaPacientes(event) {
+            const arquivo = event.target.files[0];
+            if (!arquivo) return;
+
+            const leitor = new FileReader();
+            leitor.onload = function(e) {
+                try {
+                    const dadosBinarios = e.target.result;
+                    const pastaTrabalho = XLSX.read(dadosBinarios, { type: 'binary' });
+                    const primeiraAba = pastaTrabalho.SheetNames[0];
+                    const linhasPlanilha = XLSX.utils.sheet_to_json(pastaTrabalho.Sheets[primeiraAba]);
+
+                    if (linhasPlanilha.length === 0) {
+                        alert("A planilha importada está vazia.");
+                        return;
+                    }
+
+                    let chaveProntuario = "";
+                    let chaveNome = "";
+
+                    const primeirasChaves = Object.keys(linhasPlanilha[0]);
+                    primeirasChaves.forEach(chave => {
+                        const normalizada = chave.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        if (normalizada.includes("prontuario") || normalizada.includes("numero") || normalizada.includes("cod")) {
+                            chaveProntuario = chave;
+                        }
+                        if (normalizada.includes("nome") || normalizada.includes("paciente") || normalizada.includes("cliente")) {
+                            chaveNome = chave;
+                        }
+                    });
+
+                    if (!chaveProntuario) chaveProntuario = primeirasChaves[0];
+                    if (!chaveNome) chaveNome = primeirasChaves[1];
+
+                    let cadastrados = 0;
+                    linhasPlanilha.forEach(linha => {
+                        const prontuario = String(linha[chaveProntuario] || "").trim();
+                        const nome = String(linha[chaveNome] || "").trim();
+
+                        if (prontuario && nome) {
+                            dbPacientes[prontuario] = nome;
+                            cadastrados++;
+                        }
+                    });
+
+                    localStorage.setItem('sisodonto_pacientes', JSON.stringify(dbPacientes));
+                    alert(`Sucesso! Foram importados/atualizados ${cadastrados} prontuários.`);
+                    buscarPacientePorProntuario(document.getElementById('paciente-prontuario').value);
+                    
+                } catch (erro) {
+                    alert("Erro ao ler o arquivo Excel.");
+                    console.error(erro);
+                }
+            };
+            leitor.readAsBinaryString(arquivo);
+            event.target.value = "";
+        }
+
+        function monitorarValidadeAposAbertura(material, dataAbertura, statusLote, dataFechamento) {
+            const prazoDias = REGRAS_VALIDADE_APOS_ABERTURA[material.toUpperCase()];
+            if (!prazoDias) return { texto: "Não definido na planilha", classe: "pao-indefinido" };
+
+            const dataIni = new Date(dataAbertura);
+            const dataFim = statusLote === "ESGOTADO" && dataFechamento ? new Date(dataFechamento) : new Date();
+
+            dataIni.setHours(0,0,0,0);
+            dataFim.setHours(0,0,0,0);
+
+            const diasPassados = Math.floor((dataFim - dataIni) / (1000 * 60 * 60 * 24));
+            const diasRestantes = prazoDias - diasPassados;
+
+            if (statusLote === "ESGOTADO") {
+                return diasRestantes < 0 ? { texto: `Esgotado VENCIDO (Passou ${Math.abs(diasRestantes)} dias)`, classe: "pao-vencido" } : { texto: `Esgotado dentro do prazo`, classe: "pao-ok" };
+            }
+
+            if (diasRestantes < 0) return { texto: `🚨 VENCIDO (Há ${Math.abs(diasRestantes)} dias)`, classe: "pao-vencido" };
+            if (diasRestantes <= 7) return { texto: `⚠️ CRÍTICO (${diasRestantes} dias rest.)`, classe: "pao-critico" };
+            return { texto: `✅ ${diasRestantes} dias restantes`, classe: "pao-ok" };
+        }
+
+        function filtrarMateriais(input) {
+            const busca = input.value.trim().toUpperCase();
+            const lista = document.getElementById('sugestoes-materiais');
+            lista.innerHTML = '';
+
+            if (!busca) {
+                lista.classList.add('hidden');
+                return;
+            }
+
+            const filtrados = MATERIAIS_CATALOGO.filter(m => m.toUpperCase().includes(busca));
+            filtrados.slice(0, 5).forEach(m => {
+                const li = document.createElement('li');
+                li.textContent = m;
+                li.onclick = () => {
+                    input.value = m;
+                    lista.classList.add('hidden');
+                    carregarLotesDoMaterial(m);
+                };
+                lista.appendChild(li);
+            });
+
+            if (!MATERIAIS_CATALOGO.some(m => m.toUpperCase() === busca)) {
+                const liNovo = document.createElement('li');
+                liNovo.className = "add-new-prompt";
+                liNovo.textContent = `✨ Adicionar "${input.value}" ao Catálogo`;
+                liNovo.onclick = () => {
+                    const novoItemFormatado = input.value.trim().toUpperCase();
+                    if(!MATERIAIS_CATALOGO.includes(novoItemFormatado)){
+                        MATERIAIS_CATALOGO.push(novoItemFormatado);
+                        localStorage.setItem('sisodonto_catalogo_itens', JSON.stringify(MATERIAIS_CATALOGO));
+                    }
+                    input.value = novoItemFormatado;
+                    lista.classList.add('hidden');
+                    carregarLotesDoMaterial(novoItemFormatado);
+                };
+                lista.appendChild(liNovo);
+            }
+            lista.classList.remove('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (e.target.id !== 'item-nome') document.getElementById('sugestoes-materiais').classList.add('hidden');
+        });
+
+        function carregarLotesDoMaterial(materialNome) {
+            const select = document.getElementById('item-lote-select');
+            select.innerHTML = '';
+            const lotesFiltrados = dbLotes.filter(l => l.material === materialNome && l.status === "ATIVO");
+
+            if (lotesFiltrados.length === 0) {
+                select.innerHTML = '<option value="">-- Sem lotes ativos! Cadastre no botão ao lado --</option>';
+                document.getElementById('item-unidade-display').value = "-";
+                vincularDadosMonitor(null);
+                return;
+            }
+
+            select.innerHTML = '<option value="">-- Selecione o Lote Ativo --</option>';
+            lotesFiltrados.forEach(l => {
+                select.innerHTML += `<option value="${l.id}">Lote: ${l.id} (Aberto em: ${formatarDataBR(l.dataAbertura)})</option>`;
+            });
+            vincularDadosMonitor(null);
+        }
+
+        function atualizarUnidadeDoLote() {
+            const loteId = document.getElementById('item-lote-select').value;
+            const materialNome = document.getElementById('item-nome').value;
+            const loteEncontrado = dbLotes.find(l => l.id === loteId && l.material === materialNome);
+            
+            if (loteEncontrado) {
+                document.getElementById('item-unidade-display').value = loteEncontrado.unidade;
+                vincularDadosMonitor(loteEncontrado);
+            } else {
+                document.getElementById('item-unidade-display').value = "-";
+                vincularDadosMonitor(null);
+            }
+        }
+
+        function vincularDadosMonitor(lote) {
+            const btnEsgotar = document.getElementById('btn-esgotar-lote');
+            if(!lote) {
+                document.getElementById('mon-data-abertura').textContent = "--";
+                document.getElementById('mon-total-saidas').textContent = "0";
+                document.getElementById('mon-total-qtd').textContent = "0";
+                btnEsgotar.disabled = true;
+                return;
+            }
+
+            const dispensacoesDoLote = dbDispensacoes.filter(d => d.loteId === lote.id && d.material === lote.material);
+            document.getElementById('mon-data-abertura').textContent = formatarDataBR(lote.dataAbertura);
+            document.getElementById('mon-total-saidas').textContent = dispensacoesDoLote.length;
+            document.getElementById('mon-total-qtd').textContent = dispensacoesDoLote.reduce((acc, curr) => acc + curr.quantidade, 0);
+            btnEsgotar.disabled = false;
+        }
+
+        function abrirModalLote() {
+            const material = document.getElementById('item-nome').value.trim();
+            if (!material) return alert("Por favor, selecione primeiro o Material para poder criar um lote.");
+            document.getElementById('modal-lote-titulo').textContent = "📦 Novo Lote de Insumo";
+            document.getElementById('modal-material-titulo').textContent = "Material: " + material;
+            document.getElementById('modal-edit-index').value = "";
+            document.getElementById('modal-edit-original-id').value = "";
+            document.getElementById('row-modal-fechamento').classList.add('hidden');
+            document.getElementById('modal-lote').classList.remove('hidden');
+        }
+
+        function fecharModalLote() {
+            document.getElementById('modal-lote').classList.add('hidden');
+            document.getElementById('modal-lote-id').value = '';
+            document.getElementById('modal-edit-index').value = '';
+            document.getElementById('modal-edit-original-id').value = '';
+        }
+
+        function editarLote(index) {
+            const lote = dbLotes[index];
+            if(!lote) return;
+
+            document.getElementById('modal-lote-titulo').textContent = "✏️ Editar Registro de Lote";
+            document.getElementById('modal-material-titulo').textContent = "Material: " + lote.material;
+            document.getElementById('modal-lote-id').value = lote.id;
+            document.getElementById('modal-lote-data').value = lote.dataAbertura;
+            document.getElementById('modal-lote-unidade').value = lote.unidade;
+            document.getElementById('modal-lote-fechamento').value = lote.dataFechamento || "";
+            document.getElementById('modal-lote-status').value = lote.status;
+            document.getElementById('modal-edit-index').value = index;
+            document.getElementById('modal-edit-original-id').value = lote.id;
+            document.getElementById('row-modal-fechamento').classList.remove('hidden');
+            document.getElementById('modal-lote').classList.remove('hidden');
+        }
+
+        function excluirLote(index) {
+            const lote = dbLotes[index];
+            if(!lote) return;
+            if(confirm(`Deseja realmente remover o lote "${lote.id}" do material "${lote.material}"?`)) {
+                dbLotes.splice(index, 1);
+                localStorage.setItem('sisodonto_lotes_v2', JSON.stringify(dbLotes));
+                document.getElementById('item-nome').value = '';
+                document.getElementById('item-lote-select').innerHTML = '<option value="">-- Selecione primeiro o material --</option>';
+                document.getElementById('item-unidade-display').value = "-";
+                vincularDadosMonitor(null);
+                atualizarInterface();
+            }
+        }
+
+        function salvarModalLote(event) {
+            event.preventDefault();
+            const indexValue = document.getElementById('modal-edit-index').value;
+            const originalId = document.getElementById('modal-edit-original-id').value;
+            const material = document.getElementById('modal-material-titulo').textContent.replace("Material: ", "").trim().toUpperCase();
+            const loteId = document.getElementById('modal-lote-id').value.trim().toUpperCase();
+            const dataAbertura = document.getElementById('modal-lote-data').value;
+            const unidade = document.getElementById('modal-lote-unidade').value;
+
+            if (indexValue === "") {
+                if(dbLotes.find(l => l.id === loteId && l.material === material)) return alert("Este número de lote já encontra-se cadastrado!");
+                dbLotes.push({ id: loteId, material: material, dataAbertura: dataAbertura, dataFechamento: null, status: "ATIVO", unidade: unidade });
+            } else {
+                const idx = parseInt(indexValue);
+                if(loteId !== originalId) {
+                    if(dbLotes.find((l, i) => i !== idx && l.id === loteId && l.material === material)) return alert("Já existe outro lote com essa identificação!");
+                    dbDispensacoes = dbDispensacoes.map(d => (d.loteId === originalId && d.material === material) ? { ...d, loteId: loteId, unidade: unidade } : d);
+                    localStorage.setItem('sisodonto_dispensacoes_v2', JSON.stringify(dbDispensacoes));
+                }
+                const status = document.getElementById('modal-lote-status').value;
+                let dataFechamento = document.getElementById('modal-lote-fechamento').value;
+                if(status === "ESGOTADO" && !dataFechamento) dataFechamento = new Date().toISOString().split('T')[0];
+                if(status === "ATIVO") dataFechamento = null;
+
+                dbLotes[idx] = { id: loteId, material: material, dataAbertura: dataAbertura, dataFechamento: dataFechamento, status: status, unidade: unidade };
+            }
+
+            localStorage.setItem('sisodonto_lotes_v2', JSON.stringify(dbLotes));
+            fecharModalLote();
+            if(document.getElementById('item-nome').value.toUpperCase() === material) carregarLotesDoMaterial(material);
+            atualizarInterface();
+        }
+
+        function marcarLoteComoEsgotado() {
+            const loteId = document.getElementById('item-lote-select').value;
+            const materialNome = document.getElementById('item-nome').value;
+            if(!loteId) return;
+
+            if(confirm(`Deseja fechar e marcar o lote ${loteId} como ESGOTADO?`)) {
+                dbLotes = dbLotes.map(l => (l.id === loteId && l.material === materialNome) ? { ...l, status: "ESGOTADO", dataFechamento: new Date().toISOString().split('T')[0] } : l);
+                localStorage.setItem('sisodonto_lotes_v2', JSON.stringify(dbLotes));
+                document.getElementById('item-nome').value = '';
+                document.getElementById('item-lote-select').innerHTML = '<option value="">-- Selecione primeiro o material --</option>';
+                document.getElementById('item-unidade-display').value = "-";
+                vincularDadosMonitor(null);
+                atualizarInterface();
+            }
+        }
+
+        function salvarSaida(event) {
+            event.preventDefault();
+            const material = document.getElementById('item-nome').value;
+            const loteId = document.getElementById('item-lote-select').value;
+            const qtd = parseInt(document.getElementById('item-qtd').value);
+            const SampleUnit = document.getElementById('item-unidade-display').value;
+            const prontuario = document.getElementById('paciente-prontuario').value.trim();
+            const dispensador = document.getElementById('profissional-nome').value.trim();
+            const dataSaida = document.getElementById('item-data').value;
+            const nomePaciente = document.getElementById('paciente-nome-display').value || "Não Mapeado";
+
+            if(!loteId) return alert("Por favor, selecione um lote ativo válido.");
+
+            dbDispensacoes.unshift({ id: Date.now(), material: material, loteId: loteId, quantidade: qtd, unidade: SampleUnit, prontuario: prontuario, pacienteNome: nomePaciente, dispensador: dispensador, data: dataSaida });
+            localStorage.setItem('sisodonto_dispensacoes_v2', JSON.stringify(dbDispensacoes));
+
+            document.getElementById('paciente-prontuario').value = '';
+            document.getElementById('paciente-nome-display').value = '';
+            document.getElementById('paciente-nome-display').placeholder = '⚠️ Prontuário não cadastrado';
+            document.getElementById('item-qtd').value = '1';
+            
+            vincularDadosMonitor(dbLotes.find(l => l.id === loteId && l.material === material));
+            atualizarInterface();
+        }
+
+        function deletarDispensacao(id) {
+            if(confirm("Deseja realmente estornar esta dispensação?")) {
+                dbDispensacoes = dbDispensacoes.filter(d => d.id !== id);
+                localStorage.setItem('sisodonto_dispensacoes_v2', JSON.stringify(dbDispensacoes));
+                document.getElementById('item-nome').value = '';
+                document.getElementById('item-lote-select').innerHTML = '<option value="">-- Selecione primeiro o material --</option>';
+                document.getElementById('item-unidade-display').value = "-";
+                vincularDadosMonitor(null);
+                atualizarInterface();
+            }
+        }
+
+        function atualizarInterface() {
+            renderizarTabelaLotes();
+            renderizarTabelaDispensacoes();
+            
+            // Re-aplica filtros se houver termo escrito
+            filtrarTabelaLotes(document.getElementById('filtro-tabela-lotes').value);
+            filtrarTabelaMovimentacoes(document.getElementById('filtro-tabela-movimentacoes').value);
+        }
+
+        function renderizarTabelaLotes() {
+            const tbody = document.getElementById('tabela-lotes-status');
+            tbody.innerHTML = '';
+            if(dbLotes.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--gray-400); padding: 20px;">Nenhum lote registrado no sistema.</td></tr>`;
+                return;
+            }
+            dbLotes.forEach((l, index) => {
+                const dispensacoes = dbDispensacoes.filter(d => d.loteId === l.id && d.material === l.material);
+                const totalSaidas = dispensacoes.length;
+                const totalQtd = dispensacoes.reduce((acc, curr) => acc + curr.quantidade, 0);
+                let duracaoTexto = l.status === "ESGOTADO" && l.dataFechamento ? `${Math.ceil(Math.abs(new Date(l.dataFechamento) - new Date(l.dataAbertura)) / (1000 * 60 * 60 * 24))} dias` : "Em uso";
+                const infoPao = monitorarValidadeAposAbertura(l.material, l.dataAbertura, l.status, l.dataFechamento);
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${l.material}</strong></td>
+                        <td><span style="font-family: monospace; background: var(--gray-200); padding: 2px 6px; border-radius:4px;">${l.id}</span></td>
+                        <td><span class="badge ${l.status === 'ATIVO' ? 'badge-active' : 'badge-depleted'}">${l.status}</span></td>
+                        <td>${formatarDataBR(l.dataAbertura)}</td>
+                        <td>${l.dataFechamento ? formatarDataBR(l.dataFechamento) : '--'}</td>
+                        <td><strong style="color: var(--amber);">${duracaoTexto}</strong></td>
+                        <td><span class="pao-badge ${infoPao.classe}">${infoPao.texto}</span></td>
+                        <td>${totalSaidas} saídas</td>
+                        <td>${totalQtd} ${l.unidade}(s)</td>
+                        <td>${totalSaidas > 0 ? (totalQtd / totalSaidas).toFixed(1) : 0} /uso</td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <button onclick="editarLote(${index})" class="btn-secondary btn-action-sm" style="background: var(--brand-light); color: var(--brand-dark); margin-right: 4px;">✏️ Editar</button>
+                            <button onclick="excluirLote(${index})" class="btn-danger btn-action-sm">🗑️ Excluir</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderizarTabelaDispensacoes() {
+            const tbody = document.getElementById('tabela-movimentacoes');
+            tbody.innerHTML = '';
+            if (dbDispensacoes.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--gray-400); padding: 24px;">Nenhuma movimentação realizada.</td></tr>`;
+                return;
+            }
+            dbDispensacoes.forEach(d => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${formatarDataBR(d.data)}</td>
+                        <td>${d.material}</td>
+                        <td><span style="font-family: monospace; background: var(--gray-100); padding: 2px 6px;">${d.loteId}</span></td>
+                        <td><strong>${d.quantidade}</strong></td>
+                        <td><span style="color: var(--teal); font-weight:600;">${d.unidade}</span></td>
+                        <td><span style="background: var(--brand-light); color: var(--brand-dark); padding: 2px 6px; font-weight:bold; border-radius:4px;">${d.prontuario}</span></td>
+                        <td><strong>${d.pacienteNome || "Não Mapeado"}</strong></td>
+                        <td>${d.dispensador}</td>
+                        <td><button onclick="deletarDispensacao(${d.id})" class="btn-danger">🗑 Estornar</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function formatarDataBR(dataString) {
+            if(!dataString) return '--';
+            const partes = dataString.split('-');
+            return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : dataString;
+        }
+
+        function exportarExcelLotes() {
+            if(dbLotes.length === 0) return alert("Sem dados.");
+            const dados = dbLotes.map(l => {
+                const dispensacoes = dbDispensacoes.filter(d => d.loteId === l.id && d.material === l.material);
+                return {
+                    "MATERIAL / INSUMO": l.material, "LOTE": l.id, "STATUS": l.status,
+                    "DATA ABERTURA": formatarDataBR(l.dataAbertura), "DATA FECHAMENTO": l.dataFechamento ? formatarDataBR(l.dataFechamento) : "Não Finalizado",
+                    "TOTAL DE DISPENSAÇÕES": dispensacoes.length, "VOLUMETRIA TOTAL EXTRAÍDA": dispensacoes.reduce((acc, curr) => acc + curr.quantidade, 0), "UNIDADE DE MEDIDA": l.unidade
+                };
+            });
+            const ws = XLSX.utils.json_to_sheet(dados);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Lotes");
+            XLSX.writeFile(wb, "SisOdonto_Relatorio_Lotes.xlsx");
+        }
+
+        function exportarExcelMovimentacoes() {
+            if(dbDispensacoes.length === 0) return alert("Sem dados.");
+            const dados = dbDispensacoes.map(d => ({
+                "DATA DISPENSAÇÃO": formatarDataBR(d.data), "MATERIAL": d.material, "LOTE UTILIZADO": d.loteId, "QTD DISPENSADA": d.quantidade, "UNIDADE": d.unidade, "PRONTUÁRIO PACIENTE": d.prontuario, "NOME DO PACIENTE": d.pacienteNome || "Não Mapeado", "RESPONSÁVEL LIBERAÇÃO": d.dispensador
+            }));
+            const ws = XLSX.utils.json_to_sheet(dados);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Log");
+            XLSX.writeFile(wb, "SisOdonto_Log_Historico_Dispensacoes.xlsx");
+        }
+
+        function exportarPDFLotes() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'pt', 'a4');
+            doc.setFont("Helvetica", "bold"); doc.setFontSize(16);
+            doc.text("SisOdonto — Relatório Analítico de Rendimento e Auditoria de Insumos", 40, 40);
+            const colunas = ["Material/Insumo", "Lote", "Status", "Abertura", "Fechamento", "Nº Saídas", "Total Volumetria"];
+            const linhas = dbLotes.map(l => [l.material, l.id, l.status, formatarDataBR(l.dataAbertura), l.dataFechamento ? formatarDataBR(l.dataFechamento) : '--', dbDispensacoes.filter(d => d.loteId === l.id && d.material === l.material).length, dbDispensacoes.filter(d => d.loteId === l.id && d.material === l.material).reduce((acc, curr) => acc + curr.quantidade, 0) + ` ${l.unidade}`]);
+            doc.autoTable({ head: [colunas], body: linhas, startY: 75, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [30, 41, 59] } });
+            doc.save("SisOdonto_Relatorio_Rendimento_Insumos.pdf");
+        }
+    </script>
+</body>
+</html>
