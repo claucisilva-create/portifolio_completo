@@ -80,5 +80,5 @@ Abaixo estão as soluções e ferramentas desenvolvidas para automação, audito
 
 ### 📫 Conecte-se Comigo
 
-[![LinkedIn](https://www.linkedin.com/in/claucimar-ildefonso/)
-[![Instagram](https://www.instagram.com/processo_fluido/)
+[![LinkedIn](https://www.linkedin.com/in/claucimar-ildefonso/)]
+[![Instagram](https://www.instagram.com/processo_fluido/)]
