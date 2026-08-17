@@ -126,7 +126,6 @@
             justify-content: space-between;
             transition: all 0.25s ease-in-out;
             position: relative;
-            overflow: hidden;
         }
 
         .card::before {
@@ -139,6 +138,8 @@
             background: linear-gradient(to bottom, var(--accent-blue), var(--accent-indigo));
             opacity: 0;
             transition: opacity 0.25s ease;
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
         }
 
         .card:hover {
@@ -187,6 +188,7 @@
             margin-bottom: 1.5rem;
         }
 
+        /* --- ESTILOS DAS TAGS E POPUP (TOOLTIP) --- */
         .tag {
             font-size: 0.75rem;
             padding: 0.2rem 0.6rem;
@@ -194,6 +196,64 @@
             background-color: rgba(255, 255, 255, 0.05);
             color: var(--text-secondary);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .tag:hover {
+            background-color: rgba(56, 189, 248, 0.15);
+            color: var(--accent-blue);
+            border-color: rgba(56, 189, 248, 0.3);
+        }
+
+        /* Janela popup ao passar o mouse */
+        .tag::after {
+            content: attr(data-popup);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #020617;
+            color: #f1f5f9;
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 400;
+            line-height: 1.4;
+            white-space: normal;
+            width: 220px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            z-index: 100;
+        }
+
+        /* Seta apontando para baixo no popup */
+        .tag::before {
+            content: '';
+            position: absolute;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: #020617 transparent transparent transparent;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            z-index: 101;
+        }
+
+        .tag:hover::after,
+        .tag:hover::before {
+            opacity: 1;
+            visibility: visible;
         }
 
         .btn-access {
@@ -258,7 +318,10 @@
                     <div class="card-header"><span class="card-number">#01</span></div>
                     <h2 class="card-title">Registro de Consumo de Materiais</h2>
                     <p class="card-description">Módulo para controle, apontamento e histórico de consumo de insumos operacionais.</p>
-                    <div class="card-tags"><span class="tag">Insumos</span><span class="tag">Controle Operacional</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Eliminou o desperdício de insumos e automatizou a análise de consumo real de estoque.">O que resolveu?</span>
+                        <span class="tag" data-popup="Economizou até 90% do tempo gasto em auditorias e conferências manuais.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="1 Registro de Consumo de materiais.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -269,7 +332,10 @@
                     <div class="card-header"><span class="card-number">#02</span></div>
                     <h2 class="card-title">Manual de Uso para ASB</h2>
                     <p class="card-description">Documentação interativa e treinamento de procedimentos para Auxiliares de Saúde Bucal.</p>
-                    <div class="card-tags"><span class="tag">Documentação</span><span class="tag">Procedimentos</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Padronizou o treinamento inicial e a consulta rápida a POPs operacionais.">O que resolveu?</span>
+                        <span class="tag" data-popup="Reduziu o tempo de onboarding de novas auxiliares de semanas para dias.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="2 Manual de uso para ASB.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -280,7 +346,10 @@
                     <div class="card-header"><span class="card-number">#03</span></div>
                     <h2 class="card-title">Controle de Atendimento e Material Utilizado</h2>
                     <p class="card-description">Gerenciamento integrado de atendimentos associado à baixa automática de estoque/insumos.</p>
-                    <div class="card-tags"><span class="tag">Atendimento</span><span class="tag">Fluxo Operacional</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Sincronizou a baixa de estoque diretamente com a realização de procedimentos.">O que resolveu?</span>
+                        <span class="tag" data-popup="Evitou cerca de 15 horas mensais de retyping de fichas de atendimento.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="3 Controle de atendimento e material utilizado.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -291,7 +360,10 @@
                     <div class="card-header"><span class="card-number">#04</span></div>
                     <h2 class="card-title">Dashboard de Atendimento dos Residentes</h2>
                     <p class="card-description">Painel analítico para acompanhamento de métricas de produtividade e histórico de residentes.</p>
-                    <div class="card-tags"><span class="tag">Dashboard / BI</span><span class="tag">Métricas</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Centralizou indicadores de desempenho e horas clínicas em tempo real.">O que resolveu?</span>
+                        <span class="tag" data-popup="Eliminou a montagem manual de relatórios gerenciais no fim do mês.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="4 Dashboard de atendimento dos Residentes.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -302,7 +374,10 @@
                     <div class="card-header"><span class="card-number">#05</span></div>
                     <h2 class="card-title">Leitor e Utilitário de XML</h2>
                     <p class="card-description">Ferramenta para extração, validação e leitura de dados contidos em arquivos XML.</p>
-                    <div class="card-tags"><span class="tag">Utilitário</span><span class="tag">Tratamento de Dados</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Automatizou a leitura e extração de dados fiscais sem digitação manual.">O que resolveu?</span>
+                        <span class="tag" data-popup="Processamento imediato que economiza horas de conferência tributária.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="5 Leitor de XML.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -313,7 +388,10 @@
                     <div class="card-header"><span class="card-number">#06</span></div>
                     <h2 class="card-title">Sistema de Controle de Estoque Completo</h2>
                     <p class="card-description">Gestão completa de inventário, alertas de estoque mínimo e movimentação de entradas/saídas.</p>
-                    <div class="card-tags"><span class="tag">Estoque</span><span class="tag">Gestão ERP</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Zero rupturas de estoque com alertas automáticos de reposição.">O que resolveu?</span>
+                        <span class="tag" data-popup="Agilizou a contagem de estoque e inventários periódicos em 80%.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="6 Sistema de Controle de estoque completo.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -324,7 +402,10 @@
                     <div class="card-header"><span class="card-number">#07</span></div>
                     <h2 class="card-title">Cálculo de Frete e Logística</h2>
                     <p class="card-description">Simulador e calculadora para cotação de custos de entrega, peso e tarifas de frete.</p>
-                    <div class="card-tags"><span class="tag">Logística</span><span class="tag">Calculadora</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Cotação rápida e sem erros de tarifas e cubagem para envios.">O que resolveu?</span>
+                        <span class="tag" data-popup="Reduziu o tempo de cotação logística de minutos para poucos segundos.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="7 Calculo de frete.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -335,7 +416,10 @@
                     <div class="card-header"><span class="card-number">#08</span></div>
                     <h2 class="card-title">Controle de Autorização Clínica</h2>
                     <p class="card-description">Gerenciamento do fluxo de aprovação e validação de solicitações/procedimentos clínicos.</p>
-                    <div class="card-tags"><span class="tag">Workflow</span><span class="tag">Gestão Clínica</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Organizou o fluxo de solicitações e pendências de aprovação.">O que resolveu?</span>
+                        <span class="tag" data-popup="Acelerou a liberação de guias e consultas clínicas.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="8 Controle de autorização clínica.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -346,7 +430,10 @@
                     <div class="card-header"><span class="card-number">#09</span></div>
                     <h2 class="card-title">Leitor de Frequência e Presença</h2>
                     <p class="card-description">Aplicação para registro, verificação e emissão de relatórios de frequência de colaboradores.</p>
-                    <div class="card-tags"><span class="tag">Frequência</span><span class="tag">Gestão de Pessoas</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Apontamento digital de presenças e relatórios consolidados sem falha humana.">O que resolveu?</span>
+                        <span class="tag" data-popup="Eliminou conferências manuais em listas de papel ao fim de cada evento.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="9 Leitor de frequencia.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -357,7 +444,10 @@
                     <div class="card-header"><span class="card-number">#10</span></div>
                     <h2 class="card-title">Previsão de Compra e Intervalos</h2>
                     <p class="card-description">Módulo preditivo para cálculo do ciclo de compras e periodicidade de reabastecimento.</p>
-                    <div class="card-tags"><span class="tag">Planejamento</span><span class="tag">Supply Chain</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Cálculo automático da frequência exata para novas compras de insumos.">O que resolveu?</span>
+                        <span class="tag" data-popup="Geração instantânea de sugestões de pedidos de compra.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="10 Previsão de compra e intervalos.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -368,7 +458,10 @@
                     <div class="card-header"><span class="card-number">#11</span></div>
                     <h2 class="card-title">Rastreabilidade Avançada - SisOdonto</h2>
                     <p class="card-description">Sistema de rastreamento de instrumentais, materiais esterilizados e procedimentos.</p>
-                    <div class="card-tags"><span class="tag">Rastreabilidade</span><span class="tag">SisOdonto</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Garantia de segurança sanitária e histórico completo de instrumentais.">O que resolveu?</span>
+                        <span class="tag" data-popup="Busca e verificação instantânea de lote e esterilização.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="11 Rastreabilidade Avançada - SisOdonto.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
@@ -379,7 +472,10 @@
                     <div class="card-header"><span class="card-number">#12</span></div>
                     <h2 class="card-title">Controle de Movimentação de Documentos</h2>
                     <p class="card-description">Protocolo digital para acompanhamento de trâmite, envio e recebimento de documentos.</p>
-                    <div class="card-tags"><span class="tag">Protocolo</span><span class="tag">Gestão Documental</span></div>
+                    <div class="card-tags">
+                        <span class="tag" data-popup="Fim dos documentos perdidos e protocolo digital com histórico.">O que resolveu?</span>
+                        <span class="tag" data-popup="Localização imediata do status e localização de qualquer documento.">Quanto tempo economizou?</span>
+                    </div>
                 </div>
                 <a href="12 Controle de movimentação de documentos.html" class="btn-access" target="_blank">Acessar Sistema <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
             </div>
